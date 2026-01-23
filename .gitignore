@@ -1,0 +1,27 @@
+# Configuration sensible
+config.php
+.credentials.local
+
+# Claude Code
+.claude/
+
+# Logs
+logs/*.log
+
+# Cache
+*.cache
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Dépendances (si utilisées plus tard)
+vendor/
+node_modules/
+
+# Fichiers temporaires
+*.tmp
+*.temp
