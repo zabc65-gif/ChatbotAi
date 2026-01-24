@@ -139,7 +139,7 @@ Tu es serviable, réactif et tu cherches à maximiser la satisfaction client.</p
             Sauvegarder
         </button>
         <a href="chatbot-knowledge.php?id=main" class="btn btn-secondary" style="background: #dbeafe; color: #1d4ed8;">
-            📚 Base de Connaissances
+            📚 Apprentissage
         </a>
         <a href="../demo.php" target="_blank" class="btn btn-secondary">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
