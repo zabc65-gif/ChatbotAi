@@ -97,6 +97,9 @@ $chatbotSettings = $settings->getGroup('chatbot');
                 Ce texte définit la personnalité et le comportement de l'IA. Il est envoyé au début de chaque conversation.
                 Soyez précis sur le rôle, le ton et les limites de l'assistant.
             </p>
+            <p class="form-hint" style="margin-top: 8px; padding: 8px 12px; background: #d1fae5; border-radius: 6px; color: #047857;">
+                <strong>Astuce :</strong> Ajoutez <code style="background: white; padding: 2px 6px; border-radius: 4px;">{CHATBOT_FIELDS}</code> dans votre prompt pour injecter automatiquement les informations métier renseignées dans "📋 Informations".
+            </p>
         </div>
 
         <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-top: 20px;">
@@ -138,6 +141,9 @@ Tu es serviable, réactif et tu cherches à maximiser la satisfaction client.</p
             </svg>
             Sauvegarder
         </button>
+        <a href="chatbot-fields.php?id=main" class="btn btn-secondary" style="background: #d1fae5; color: #047857;">
+            📋 Informations
+        </a>
         <a href="chatbot-knowledge.php?id=main" class="btn btn-secondary" style="background: #dbeafe; color: #1d4ed8;">
             📚 Apprentissage
         </a>

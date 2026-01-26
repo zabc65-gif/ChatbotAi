@@ -2,6 +2,7 @@
 /**
  * Gestion des informations personnalisées par chatbot
  * Permet de renseigner toutes les données métier de chaque chatbot
+ * Supporte le chatbot principal (id=main) et les chatbots de démo (id=numérique)
  */
 
 $pageTitle = 'Informations Chatbot';
@@ -12,14 +13,29 @@ $error = '';
 $chatbot = null;
 $fields = [];
 $values = [];
+$isMainChatbot = false;
 
 // Récupérer l'ID du chatbot
-$chatbotId = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$rawId = $_GET['id'] ?? '';
 
-if (!$chatbotId) {
-    // Rediriger vers la liste des chatbots
-    header('Location: demo-chatbots.php');
-    exit;
+// Cas spécial : chatbot principal
+if ($rawId === 'main') {
+    $isMainChatbot = true;
+    $chatbotId = 0; // ID 0 pour le chatbot principal dans la BDD
+    $chatbot = [
+        'id' => 0,
+        'slug' => 'main',
+        'name' => 'Chatbot Principal',
+        'icon' => '🤖',
+        'color' => '#6366f1'
+    ];
+} else {
+    $chatbotId = intval($rawId);
+    if (!$chatbotId) {
+        // Rediriger vers la liste des chatbots
+        header('Location: demo-chatbots.php');
+        exit;
+    }
 }
 
 // Vérifier si les tables existent
@@ -32,8 +48,8 @@ try {
     $error = "Erreur de connexion à la base de données.";
 }
 
-// Récupérer le chatbot
-if (empty($error)) {
+// Récupérer le chatbot (sauf si c'est le principal, déjà défini)
+if (empty($error) && !$isMainChatbot) {
     $chatbot = $db->fetchOne("SELECT * FROM demo_chatbots WHERE id = ?", [$chatbotId]);
     if (!$chatbot) {
         $error = "Chatbot introuvable.";
@@ -148,7 +164,7 @@ foreach ($fields as $field) {
 
 <div class="page-header">
     <div style="display: flex; align-items: center; gap: 16px;">
-        <a href="demo-chatbots.php" class="btn btn-secondary" style="padding: 8px 12px;">
+        <a href="<?= $isMainChatbot ? 'chatbot-settings.php' : 'demo-chatbots.php' ?>" class="btn btn-secondary" style="padding: 8px 12px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </a>
         <div>
@@ -285,7 +301,7 @@ foreach ($fields as $field) {
                 <span class="filled-count" id="filled-count">0</span> / <?= count($fields) ?> champs renseignés
             </div>
             <div class="action-bar-buttons">
-                <a href="demo-chatbots.php" class="btn btn-secondary">Annuler</a>
+                <a href="<?= $isMainChatbot ? 'chatbot-settings.php' : 'demo-chatbots.php' ?>" class="btn btn-secondary">Annuler</a>
                 <button type="submit" class="btn btn-primary btn-lg">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>

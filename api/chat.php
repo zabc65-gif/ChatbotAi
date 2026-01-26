@@ -450,16 +450,108 @@ function adaptMainChatbotMessage(): void
         $systemPrompt = defined('SYSTEM_MESSAGE') ? SYSTEM_MESSAGE : '';
     }
 
+    // Charger et intégrer les champs personnalisés du chatbot principal (ID = 0)
+    $fieldsBlock = getMainChatbotFields();
+    if (!empty($fieldsBlock)) {
+        // Remplacer le placeholder {CHATBOT_FIELDS} ou ajouter à la fin
+        if (strpos($systemPrompt, '{CHATBOT_FIELDS}') !== false) {
+            $systemPrompt = str_replace('{CHATBOT_FIELDS}', $fieldsBlock, $systemPrompt);
+        } else {
+            $systemPrompt .= "\n\n" . $fieldsBlock;
+        }
+    } else {
+        // Supprimer le placeholder s'il n'y a pas de champs
+        $systemPrompt = str_replace('{CHATBOT_FIELDS}', '', $systemPrompt);
+    }
+
     // Charger et intégrer la base de connaissances du chatbot principal
     $knowledge = getKnowledgeBase(null);
     if (!empty($knowledge)) {
         $systemPrompt .= "\n\n" . $knowledge;
     }
 
-    // Seulement si on a des connaissances à ajouter
-    if (!empty($knowledge)) {
+    // Appliquer si on a des personnalisations
+    if (!empty($fieldsBlock) || !empty($knowledge) || $customPrompt) {
         $GLOBALS['CUSTOM_SYSTEM_MESSAGE'] = $systemPrompt;
     }
+}
+
+/**
+ * Récupère et formate les champs personnalisés du chatbot principal
+ * @return string Bloc formaté des informations
+ */
+function getMainChatbotFields(): string
+{
+    global $settingsDb;
+
+    // Vérifier si les tables existent
+    try {
+        $tableExists = $settingsDb->fetchOne("SHOW TABLES LIKE 'chatbot_field_values'");
+        if (!$tableExists) {
+            return '';
+        }
+    } catch (Exception $e) {
+        return '';
+    }
+
+    // Récupérer les valeurs du chatbot principal (chatbot_id = 0)
+    $fields = $settingsDb->fetchAll(
+        "SELECT d.field_key, d.field_label, d.field_group, d.field_type, v.field_value
+         FROM chatbot_field_values v
+         JOIN chatbot_field_definitions d ON d.field_key = v.field_key
+         WHERE v.chatbot_id = 0 AND v.field_value IS NOT NULL AND v.field_value != ''
+         ORDER BY d.field_group, d.sort_order"
+    );
+
+    if (empty($fields)) {
+        return '';
+    }
+
+    // Grouper par catégorie
+    $groups = [];
+    $groupLabels = [
+        'entreprise' => 'INFORMATIONS ENTREPRISE',
+        'prestations' => 'PRESTATIONS',
+        'zone' => 'ZONE D\'INTERVENTION',
+        'general' => 'INFORMATIONS GÉNÉRALES',
+    ];
+
+    foreach ($fields as $field) {
+        $group = $field['field_group'] ?: 'general';
+        if (!isset($groups[$group])) {
+            $groups[$group] = [];
+        }
+
+        // Formater la valeur selon le type
+        $value = $field['field_value'];
+        if ($field['field_type'] === 'checkbox') {
+            $value = $value ? 'Oui' : 'Non';
+        }
+
+        $groups[$group][] = [
+            'label' => $field['field_label'],
+            'value' => $value
+        ];
+    }
+
+    // Construire le bloc texte
+    $output = "";
+
+    foreach ($groups as $groupKey => $groupFields) {
+        $groupTitle = $groupLabels[$groupKey] ?? strtoupper($groupKey);
+        $output .= "--- {$groupTitle} ---\n";
+
+        foreach ($groupFields as $field) {
+            if (strpos($field['value'], "\n") !== false) {
+                $output .= "• {$field['label']} :\n  " . str_replace("\n", "\n  ", $field['value']) . "\n";
+            } else {
+                $output .= "• {$field['label']} : {$field['value']}\n";
+            }
+        }
+        $output .= "\n";
+    }
+
+    return trim($output);
 }
 
 /**
