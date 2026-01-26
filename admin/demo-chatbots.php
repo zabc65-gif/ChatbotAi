@@ -139,12 +139,11 @@ if (empty($error) || strpos($error, 'tables') === false) {
                     <div class="step-number">2</div>
                     <div class="step-content">
                         <h4>Configurer le prompt système</h4>
-                        <p>C'est le coeur du chatbot ! Décrivez :</p>
+                        <p>C'est le coeur du chatbot ! Définissez :</p>
                         <ul>
-                            <li><strong>L'identité</strong> : Nom de l'entreprise, secteur d'activité</li>
-                            <li><strong>Les informations</strong> : Adresse, téléphone, horaires</li>
-                            <li><strong>Les prestations</strong> : Services proposés avec tarifs</li>
+                            <li><strong>L'identité</strong> : Rôle et secteur d'activité</li>
                             <li><strong>Les règles</strong> : Ce que le chatbot peut/ne peut pas faire</li>
+                            <li><strong>Le placeholder</strong> : Ajoutez <code>{CHATBOT_FIELDS}</code> pour injecter automatiquement les informations métier</li>
                         </ul>
                     </div>
                 </div>
@@ -161,8 +160,22 @@ if (empty($error) || strpos($error, 'tables') === false) {
                 <div class="guide-step">
                     <div class="step-number">4</div>
                     <div class="step-content">
-                        <h4>Enrichir avec l'apprentissage</h4>
-                        <p>Ajoutez des FAQ et informations spécifiques dans la <strong>Base de Connaissances</strong> pour des réponses plus précises.</p>
+                        <h4>📋 Renseigner les informations métier</h4>
+                        <p>Cliquez sur <strong>"📋 Informations"</strong> pour remplir les données de l'entreprise :</p>
+                        <ul>
+                            <li>Coordonnées (adresse, téléphone, email, horaires)</li>
+                            <li>Tarifs et prestations</li>
+                            <li>Zone d'intervention</li>
+                            <li>Informations légales (SIRET, assurances...)</li>
+                        </ul>
+                        <p style="margin-top: 8px; font-size: 13px; color: #059669;"><strong>Ces informations sont automatiquement utilisées par l'IA pour répondre aux visiteurs.</strong></p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>📚 Enrichir avec l'apprentissage</h4>
+                        <p>Ajoutez des FAQ et informations spécifiques dans la <strong>Base de Connaissances</strong> pour des réponses encore plus précises.</p>
                         <a href="chatbot-knowledge.php" class="btn btn-primary btn-sm" style="margin-top: 8px;">Accéder à l'apprentissage</a>
                     </div>
                 </div>
@@ -171,9 +184,9 @@ if (empty($error) || strpos($error, 'tables') === false) {
             <div style="margin-top: 20px; padding: 16px; background: #eff6ff; border-radius: 8px;">
                 <h4 style="margin: 0 0 8px 0; color: #1d4ed8;">Conseils pour un chatbot efficace</h4>
                 <ul style="margin: 0; padding-left: 20px; color: #1e40af;">
-                    <li>Soyez précis dans le prompt : plus il est détaillé, meilleures sont les réponses</li>
-                    <li>Incluez les tarifs réels pour éviter les réponses vagues</li>
-                    <li>Ajoutez des FAQ pour les questions fréquentes</li>
+                    <li><strong>Remplissez les informations métier</strong> : elles sont injectées automatiquement dans l'IA</li>
+                    <li>Utilisez le placeholder <code>{CHATBOT_FIELDS}</code> dans le prompt pour positionner les infos</li>
+                    <li>Ajoutez des FAQ dans l'apprentissage pour les questions fréquentes</li>
                     <li>Testez régulièrement le chatbot avec différentes questions</li>
                 </ul>
             </div>
