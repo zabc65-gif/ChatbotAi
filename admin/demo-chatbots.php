@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
                 $welcome = trim($_POST['welcome_message'] ?? '');
                 $prompt = trim($_POST['system_prompt'] ?? '');
                 $redirect = trim($_POST['redirect_message'] ?? '');
+                $quickActions = trim($_POST['quick_actions'] ?? '');
                 $active = isset($_POST['active']) ? 1 : 0;
                 $sortOrder = intval($_POST['sort_order'] ?? 0);
 
@@ -48,12 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
                 }
 
                 if ($action === 'edit' && $id) {
-                    $sql = "UPDATE demo_chatbots SET slug=?, name=?, icon=?, color=?, welcome_message=?, system_prompt=?, redirect_message=?, active=?, sort_order=? WHERE id=?";
-                    $db->query($sql, [$slug, $name, $icon, $color, $welcome, $prompt, $redirect, $active, $sortOrder, $id]);
+                    $sql = "UPDATE demo_chatbots SET slug=?, name=?, icon=?, color=?, welcome_message=?, system_prompt=?, redirect_message=?, quick_actions=?, active=?, sort_order=? WHERE id=?";
+                    $db->query($sql, [$slug, $name, $icon, $color, $welcome, $prompt, $redirect, $quickActions, $active, $sortOrder, $id]);
                     $success = "Chatbot \"$name\" mis à jour !";
                 } else {
-                    $sql = "INSERT INTO demo_chatbots (slug, name, icon, color, welcome_message, system_prompt, redirect_message, active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                    $db->query($sql, [$slug, $name, $icon, $color, $welcome, $prompt, $redirect, $active, $sortOrder]);
+                    $sql = "INSERT INTO demo_chatbots (slug, name, icon, color, welcome_message, system_prompt, redirect_message, quick_actions, active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $db->query($sql, [$slug, $name, $icon, $color, $welcome, $prompt, $redirect, $quickActions, $active, $sortOrder]);
                     $success = "Chatbot \"$name\" créé !";
                 }
                 break;
@@ -355,6 +356,12 @@ Je peux vous aider pour :
 
 Comment puis-je vous aider ?") ?></textarea>
                     <p class="form-hint">Affiché quand l'utilisateur pose une question hors sujet</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Questions suggérées (Quick Actions)</label>
+                    <textarea name="quick_actions" class="form-textarea" rows="3" placeholder="Une question par ligne"><?= htmlspecialchars($editBot['quick_actions'] ?? "Demander un devis\nEn savoir plus\nContact") ?></textarea>
+                    <p class="form-hint">Boutons affichés en bas du chat. Une question par ligne (3 à 5 suggérées).</p>
                 </div>
             </div>
         </div>
@@ -738,6 +745,10 @@ Je peux vous aider pour :
 
 Comment puis-je vous aider ?`;
 
+const defaultQuickActions = `Demander un devis
+En savoir plus
+Contact`;
+
 function resetForm() {
     const form = document.querySelector('#form-edit form');
     form.querySelector('input[name="slug"]').value = '';
@@ -748,6 +759,7 @@ function resetForm() {
     form.querySelector('input[name="active"]').checked = true;
     form.querySelector('textarea[name="welcome_message"]').value = defaultWelcome;
     form.querySelector('textarea[name="redirect_message"]').value = defaultRedirect;
+    form.querySelector('textarea[name="quick_actions"]').value = defaultQuickActions;
     form.querySelector('textarea[name="system_prompt"]').value = defaultTemplate;
     form.querySelector('input[name="action"]').value = 'add';
     const idInput = form.querySelector('input[name="id"]');

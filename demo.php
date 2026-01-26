@@ -19,6 +19,12 @@ $chatbots = $db->fetchAll(
 // Préparer les données pour JavaScript
 $sectorsJS = [];
 foreach ($chatbots as $bot) {
+    // Convertir les quick_actions de la BDD (une par ligne) en array
+    $quickActions = ['Demander un devis', 'En savoir plus', 'Contact']; // Valeurs par défaut
+    if (!empty($bot['quick_actions'])) {
+        $quickActions = array_filter(array_map('trim', explode("\n", $bot['quick_actions'])));
+    }
+
     $sectorsJS[$bot['slug']] = [
         'name' => $bot['name'],
         'icon' => $bot['icon'],
@@ -27,7 +33,7 @@ foreach ($chatbots as $bot) {
         'tips' => [
             ['title' => 'Question type', 'text' => '"Comment puis-je vous aider ?"']
         ],
-        'quickActions' => ['Demander un devis', 'En savoir plus', 'Contact']
+        'quickActions' => array_values($quickActions)
     ];
 }
 

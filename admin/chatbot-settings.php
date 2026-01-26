@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $settings->set('chatbot_system_prompt', $_POST['chatbot_system_prompt'] ?? '', 'text', 'chatbot', 'Prompt système');
         $settings->set('chatbot_placeholder', $_POST['chatbot_placeholder'] ?? '', 'string', 'chatbot', 'Placeholder');
         $settings->set('chatbot_primary_color', $_POST['chatbot_primary_color'] ?? '#6366f1', 'string', 'chatbot', 'Couleur principale');
+        $settings->set('chatbot_quick_actions', $_POST['chatbot_quick_actions'] ?? '', 'text', 'chatbot', 'Questions suggérées');
 
         $success = 'Configuration sauvegardée avec succès !';
     } catch (Exception $e) {
@@ -82,6 +83,12 @@ $chatbotSettings = $settings->getGroup('chatbot');
                 <label class="form-label">Message de bienvenue</label>
                 <textarea name="chatbot_welcome_message" class="form-textarea" rows="3"><?= htmlspecialchars($chatbotSettings['chatbot_welcome_message']['value'] ?? 'Bonjour ! Je suis votre assistant virtuel. Comment puis-je vous aider ?') ?></textarea>
                 <p class="form-hint">Le premier message affiché quand un visiteur ouvre le chat</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Questions suggérées (Quick Actions)</label>
+                <textarea name="chatbot_quick_actions" class="form-textarea" rows="3" placeholder="Une question par ligne"><?= htmlspecialchars($chatbotSettings['chatbot_quick_actions']['value'] ?? "Demander un devis\nEn savoir plus\nContact") ?></textarea>
+                <p class="form-hint">Boutons affichés en bas du chat pour guider l'utilisateur. Une question par ligne (3 à 5 suggérées).</p>
             </div>
         </div>
     </div>
