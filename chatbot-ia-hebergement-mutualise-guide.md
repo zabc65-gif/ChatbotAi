@@ -1375,6 +1375,380 @@ Estimation tokens = 2000 / 4 = 500 tokens
 
 ---
 
+## 14. Système de chatbots sectoriels
+
+### Architecture multi-chatbots
+
+Le système permet de créer plusieurs chatbots spécialisés par secteur d'activité, chacun avec sa propre configuration.
+
+**Chatbots disponibles par défaut :**
+
+| Secteur | Slug | Description |
+|---------|------|-------------|
+| Artisans & BTP | `btp` | Devis, travaux, interventions |
+| Agences Immobilières | `immo` | Mandats, estimations, visites |
+| E-commerce | `ecommerce` | Produits, commandes, livraison |
+
+**Structure d'un chatbot sectoriel :**
+- **Slug** : Identifiant unique (ex: `immo`)
+- **Nom** : Nom affiché (ex: "Agences Immobilières")
+- **Icône** : Emoji représentatif (ex: 🏡)
+- **Couleur** : Code hexadécimal (ex: #3b82f6)
+- **Message de bienvenue** : Premier message affiché au visiteur
+- **Prompt système** : Instructions et comportement de l'IA
+- **Message anti-abus** : Réponse quand question hors sujet
+
+---
+
+### Système de champs personnalisés
+
+Chaque chatbot peut avoir des **informations métier structurées** qui sont automatiquement injectées dans les réponses de l'IA.
+
+#### Tables de données
+
+**Table `chatbot_field_definitions`** : Définit les champs disponibles par secteur
+
+```
+- sector : Secteur concerné (immo, btp, ecommerce, general)
+- field_key : Clé unique du champ
+- field_label : Libellé affiché dans l'admin
+- field_type : Type de champ (text, textarea, checkbox, email, tel, url, select)
+- field_group : Groupe de champs pour organisation
+- field_placeholder : Texte d'aide dans le champ
+- required : Champ obligatoire ou non
+- sort_order : Ordre d'affichage
+```
+
+**Table `chatbot_field_values`** : Stocke les valeurs saisies pour chaque chatbot
+
+```
+- chatbot_id : ID du chatbot
+- field_key : Clé du champ
+- field_value : Valeur saisie
+```
+
+---
+
+### Champs prédéfinis par secteur
+
+#### Secteur Immobilier (spécialisé Mandat)
+
+**Groupe : Informations Agence**
+- Nom de l'agence
+- Adresse
+- Téléphone / Email
+- Horaires d'ouverture
+- SIRET
+- N° Carte Professionnelle (CPI)
+- Garantie Financière
+- Assurance RCP
+
+**Groupe : Types de Mandats**
+- Mandat Simple (description, durée)
+- Mandat Exclusif (description, durée, avantages)
+- Mandat Semi-Exclusif (description)
+
+**Groupe : Honoraires**
+- Honoraires Vente (% TTC)
+- Détails Honoraires
+- Honoraires Location
+- Honoraires Gestion Locative
+
+**Groupe : Services Inclus**
+- Estimation Gratuite ✓
+- Photos Professionnelles ✓
+- Visite Virtuelle 360° ✓
+- Home Staging Virtuel ✓
+- Diffusion Multi-Portails
+- Accompagnement Diagnostics ✓
+
+**Groupe : Zone d'intervention**
+- Villes Couvertes
+- Spécialités (types de biens)
+
+**Groupe : Documents**
+- Documents Requis pour Mandat
+- Diagnostics Obligatoires
+
+**Groupe : Processus**
+- Étapes Estimation
+- Étapes Vente
+- Durée Signature Mandat
+
+---
+
+#### Secteur BTP
+
+**Groupe : Entreprise**
+- Nom, Adresse, Téléphone, Email
+- SIRET
+- Certifications RGE
+- Assurance Décennale
+
+**Groupe : Métier**
+- Métier Principal
+- Spécialités
+
+**Groupe : Services**
+- Service 1-3 (nom + tarif)
+
+**Groupe : Zone**
+- Zone d'intervention
+- Délai d'intervention
+- Devis Gratuit ✓
+- Déplacement Gratuit ✓
+
+---
+
+#### Secteur E-commerce
+
+**Groupe : Boutique**
+- Nom de la Boutique
+- Email SAV / Téléphone
+- Horaires SAV
+
+**Groupe : Livraison**
+- Délai de Livraison
+- Livraison Gratuite dès...
+- Transporteurs
+- Livraison Internationale
+
+**Groupe : Retours**
+- Délai de Retour
+- Conditions de Retour
+- Retour Gratuit ✓
+- Échange Possible ✓
+
+**Groupe : Paiement**
+- Moyens de Paiement
+- Paiement Sécurisé
+
+**Groupe : Produits**
+- Catégories de Produits
+- Marques Vendues
+
+---
+
+### Injection automatique dans les prompts
+
+Les champs renseignés sont automatiquement formatés et injectés dans le prompt système de l'IA.
+
+**Exemple de formatage :**
+
+```
+--- INFORMATIONS AGENCE ---
+• Nom de l'agence : Immobilier Plus
+• Adresse : 123 Avenue de la République, 75011 Paris
+• Téléphone : 01 23 45 67 89
+• N° Carte Professionnelle : CPI 7501 2019 000 012 345
+
+--- HONORAIRES ET TARIFS ---
+• Honoraires Vente : 5% TTC du prix de vente
+• Détails Honoraires : À la charge du vendeur. Inclus: estimation, photos, diffusion...
+
+--- SERVICES PROPOSÉS ---
+• Estimation Gratuite : Oui
+• Photos Professionnelles : Oui
+• Visite Virtuelle 360° : Oui
+```
+
+**Placeholder dans le prompt :**
+Le prompt système peut contenir le placeholder `{CHATBOT_FIELDS}` qui sera remplacé par les informations formatées.
+
+---
+
+## 15. Base de connaissances (Apprentissage)
+
+### Structure de la base de connaissances
+
+**Table `chatbot_knowledge`** : Stocke les connaissances spécifiques
+
+```
+- chatbot_id : ID du chatbot (NULL = chatbot principal)
+- type : Type de connaissance (faq, info, response)
+- question : Question (pour type FAQ)
+- answer : Réponse ou information
+- keywords : Mots-clés associés
+- active : Statut activation
+- sort_order : Ordre d'affichage
+```
+
+---
+
+### Types de connaissances
+
+**FAQ (Questions Fréquentes)**
+- Question : "Quels sont vos horaires d'ouverture ?"
+- Réponse : "Nous sommes ouverts du lundi au samedi de 9h à 19h."
+- Mots-clés : "horaires, ouverture, heures"
+
+**Informations Générales**
+- Contenu libre ajouté au contexte de l'IA
+- Ex: Présentation de l'entreprise, historique, valeurs
+
+**Réponses Personnalisées**
+- Réponses types pour situations spécifiques
+- Ex: Process de prise de rendez-vous, étapes d'achat
+
+---
+
+### Intégration dans les prompts
+
+Les connaissances sont automatiquement ajoutées au prompt système :
+
+```
+=== BASE DE CONNAISSANCES ===
+Utilise ces informations pour répondre aux questions des visiteurs.
+
+--- INFORMATIONS ---
+Nous sommes une agence immobilière familiale fondée en 1985...
+
+--- QUESTIONS FRÉQUENTES ---
+Q: Quels sont vos horaires d'ouverture ?
+R: Nous sommes ouverts du lundi au samedi de 9h à 19h.
+
+Q: Comment prendre rendez-vous ?
+R: Vous pouvez nous appeler ou utiliser notre formulaire en ligne.
+
+--- RÉPONSES PERSONNALISÉES ---
+Pour estimer votre bien, nous vous proposons un rendez-vous gratuit...
+```
+
+---
+
+## 16. Système anti-abus
+
+### Détection des questions hors-sujet
+
+Le système détecte automatiquement les tentatives d'utilisation du chatbot comme assistant général.
+
+**Catégories détectées :**
+
+| Catégorie | Exemples de patterns |
+|-----------|---------------------|
+| Programmation | code, python, javascript, debug, algorithm |
+| Rédaction | écris un texte, rédige, dissertation, résumé |
+| Devoirs | exercice math, calcule, théorème, devoir |
+| Traduction | traduis, translate, en anglais |
+| Questions générales | météo, recette, horoscope, actualité |
+| Contenu sensible | pirater, hack, password, virus |
+
+**Comportement :**
+- Si abus détecté → Message de redirection personnalisé
+- L'utilisateur est ramené vers le sujet du chatbot
+- Le message compte quand même dans la limite quotidienne
+
+---
+
+### Limite d'utilisation
+
+**Système de quotas par utilisateur :**
+
+- **Identification** : Hash(IP + fingerprint navigateur)
+- **Limite par défaut** : 10 messages par jour
+- **Réinitialisation** : Chaque minuit
+- **Exception** : Administrateurs connectés = illimité
+
+**Table `demo_usage`** :
+```
+- identifier : Hash unique de l'utilisateur
+- chatbot_slug : Slug du chatbot utilisé
+- message_count : Nombre de messages envoyés
+- date : Date du jour
+```
+
+**Message de limite atteinte :**
+```
+⚠️ Vous avez atteint la limite de 10 messages par jour pour cette démo.
+
+Pour continuer à utiliser le chatbot sans limite, contactez-nous !
+📧 contact@entreprise.fr
+```
+
+---
+
+## 17. Interface d'administration
+
+### Pages d'administration disponibles
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Dashboard | `/admin/` | Vue d'ensemble et statistiques |
+| Chatbot Principal | `/admin/chatbot-settings.php` | Configuration du chatbot principal |
+| Chatbots Démo | `/admin/demo-chatbots.php` | Gestion des chatbots sectoriels |
+| Informations | `/admin/chatbot-fields.php?id=X` | Champs personnalisés par chatbot |
+| Apprentissage | `/admin/chatbot-knowledge.php?id=X` | Base de connaissances |
+| Conversations | `/admin/conversations.php` | Historique des échanges |
+| Paramètres Site | `/admin/site-settings.php` | Configuration générale |
+
+---
+
+### Workflow de configuration d'un chatbot
+
+**Étape 1 : Créer le chatbot**
+1. Aller dans "Chatbots Démo"
+2. Cliquer sur "Nouveau Chatbot"
+3. Renseigner : slug, nom, icône, couleur
+
+**Étape 2 : Configurer le prompt système**
+1. Définir l'identité du chatbot
+2. Lister les règles strictes
+3. Définir ce que le chatbot peut/ne peut pas faire
+4. Utiliser le placeholder `{CHATBOT_FIELDS}` pour les infos dynamiques
+
+**Étape 3 : Renseigner les informations métier**
+1. Cliquer sur "📋 Informations"
+2. Remplir les champs par groupe
+3. Ces informations seront automatiquement utilisées par l'IA
+
+**Étape 4 : Enrichir la base de connaissances**
+1. Cliquer sur "📚 Apprentissage"
+2. Ajouter des FAQ
+3. Ajouter des informations générales
+4. Ajouter des réponses personnalisées
+
+**Étape 5 : Tester**
+1. Aller sur la page de démo
+2. Sélectionner le chatbot
+3. Tester différentes questions
+4. Ajuster si nécessaire
+
+---
+
+### Scripts de mise à jour
+
+**Installation initiale :**
+```
+/admin/install.php?key=install_admin_2024
+→ Crée tables users + settings
+→ Crée compte admin par défaut
+```
+
+**Système chatbots démo :**
+```
+/admin/update-demo-system.php?key=update_demo_2024
+→ Crée tables demo_chatbots + demo_usage
+→ Insère 3 chatbots par défaut (BTP, Immo, E-commerce)
+```
+
+**Base de connaissances :**
+```
+/admin/update-knowledge-system.php?key=install_knowledge_2024
+→ Crée table chatbot_knowledge
+```
+
+**Champs personnalisés :**
+```
+/admin/update-chatbot-fields.php?key=update_fields_2024
+→ Crée tables chatbot_field_definitions + chatbot_field_values
+→ Insère champs prédéfinis pour tous les secteurs
+→ Optimise le chatbot immobilier pour le mandat
+```
+
+⚠️ **Important** : Supprimer ces scripts après exécution !
+
+---
+
 ## Conclusion
 
 Ce guide complet fournit toutes les informations théoriques et stratégiques nécessaires pour mettre en place un chatbot IA sur hébergement mutualisé.
@@ -1387,10 +1761,16 @@ Ce guide complet fournit toutes les informations théoriques et stratégiques n�
 ✅ **Optimisation tokens** : Compression intelligente économise 50-60%
 ✅ **Capacité** : 16 000 conversations/jour gratuitement
 ✅ **Scalable** : Évolution facile selon croissance
+✅ **Multi-chatbots** : Plusieurs chatbots sectoriels personnalisables
+✅ **Champs dynamiques** : Informations métier injectées automatiquement
+✅ **Base de connaissances** : FAQ et informations enrichissent les réponses
+✅ **Anti-abus** : Protection contre utilisation hors-sujet
+✅ **Administration complète** : Interface intuitive de gestion
 
 Le projet est techniquement réalisable, économiquement viable (gratuit au démarrage), et offre une excellente base pour un chatbot professionnel.
 
 ---
 
 **Document créé pour Bruno - Janvier 2025**
+**Mis à jour : Janvier 2025 - Ajout système multi-chatbots et champs personnalisés**
 **À utiliser avec Claude dans VSCode pour implémentation pratique**
