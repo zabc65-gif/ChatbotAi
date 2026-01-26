@@ -216,7 +216,7 @@ try {
 
 /**
  * Adapte le message système selon le contexte métier
- * Charge les prompts depuis la table demo_chatbots et intègre la base de connaissances
+ * Charge les prompts depuis la table demo_chatbots et intègre la base de connaissances + champs personnalisés
  */
 function adaptSystemMessage(string $context): void
 {
@@ -231,6 +231,20 @@ function adaptSystemMessage(string $context): void
     if ($chatbot && !empty($chatbot['system_prompt'])) {
         $systemPrompt = $chatbot['system_prompt'];
 
+        // Charger et intégrer les champs personnalisés
+        $fieldsBlock = getChatbotFields($chatbot['id']);
+        if (!empty($fieldsBlock)) {
+            // Remplacer le placeholder {CHATBOT_FIELDS} ou ajouter à la fin
+            if (strpos($systemPrompt, '{CHATBOT_FIELDS}') !== false) {
+                $systemPrompt = str_replace('{CHATBOT_FIELDS}', $fieldsBlock, $systemPrompt);
+            } else {
+                $systemPrompt .= "\n\n" . $fieldsBlock;
+            }
+        } else {
+            // Supprimer le placeholder s'il n'y a pas de champs
+            $systemPrompt = str_replace('{CHATBOT_FIELDS}', '', $systemPrompt);
+        }
+
         // Charger et intégrer la base de connaissances
         $knowledge = getKnowledgeBase($chatbot['id']);
         if (!empty($knowledge)) {
@@ -239,6 +253,99 @@ function adaptSystemMessage(string $context): void
 
         $GLOBALS['CUSTOM_SYSTEM_MESSAGE'] = $systemPrompt;
     }
+}
+
+/**
+ * Récupère et formate les champs personnalisés d'un chatbot
+ * @param int $chatbotId ID du chatbot
+ * @return string Bloc formaté des informations
+ */
+function getChatbotFields(int $chatbotId): string
+{
+    global $settingsDb;
+
+    // Vérifier si les tables existent
+    try {
+        $tableExists = $settingsDb->fetchOne("SHOW TABLES LIKE 'chatbot_field_values'");
+        if (!$tableExists) {
+            return '';
+        }
+    } catch (Exception $e) {
+        return '';
+    }
+
+    // Récupérer les valeurs avec leurs labels
+    $fields = $settingsDb->fetchAll(
+        "SELECT d.field_key, d.field_label, d.field_group, d.field_type, v.field_value
+         FROM chatbot_field_values v
+         JOIN chatbot_field_definitions d ON d.field_key = v.field_key
+         WHERE v.chatbot_id = ? AND v.field_value IS NOT NULL AND v.field_value != ''
+         ORDER BY d.field_group, d.sort_order",
+        [$chatbotId]
+    );
+
+    if (empty($fields)) {
+        return '';
+    }
+
+    // Grouper par catégorie
+    $groups = [];
+    $groupLabels = [
+        'agence' => 'INFORMATIONS AGENCE',
+        'entreprise' => 'INFORMATIONS ENTREPRISE',
+        'boutique' => 'INFORMATIONS BOUTIQUE',
+        'mandats' => 'TYPES DE MANDATS',
+        'honoraires' => 'HONORAIRES ET TARIFS',
+        'services' => 'SERVICES PROPOSÉS',
+        'zone' => 'ZONE D\'INTERVENTION',
+        'documents' => 'DOCUMENTS ET FORMALITÉS',
+        'processus' => 'PROCESSUS ET ÉTAPES',
+        'metier' => 'MÉTIER ET SPÉCIALITÉS',
+        'prestations' => 'PRESTATIONS',
+        'livraison' => 'LIVRAISON',
+        'retours' => 'RETOURS ET ÉCHANGES',
+        'paiement' => 'MOYENS DE PAIEMENT',
+        'produits' => 'PRODUITS',
+        'general' => 'INFORMATIONS GÉNÉRALES',
+    ];
+
+    foreach ($fields as $field) {
+        $group = $field['field_group'] ?: 'general';
+        if (!isset($groups[$group])) {
+            $groups[$group] = [];
+        }
+
+        // Formater la valeur selon le type
+        $value = $field['field_value'];
+        if ($field['field_type'] === 'checkbox') {
+            $value = $value ? 'Oui' : 'Non';
+        }
+
+        $groups[$group][] = [
+            'label' => $field['field_label'],
+            'value' => $value
+        ];
+    }
+
+    // Construire le bloc texte
+    $output = "";
+
+    foreach ($groups as $groupKey => $groupFields) {
+        $groupTitle = $groupLabels[$groupKey] ?? strtoupper($groupKey);
+        $output .= "--- {$groupTitle} ---\n";
+
+        foreach ($groupFields as $field) {
+            // Si la valeur contient des retours à la ligne, l'indenter
+            if (strpos($field['value'], "\n") !== false) {
+                $output .= "• {$field['label']} :\n  " . str_replace("\n", "\n  ", $field['value']) . "\n";
+            } else {
+                $output .= "• {$field['label']} : {$field['value']}\n";
+            }
+        }
+        $output .= "\n";
+    }
+
+    return trim($output);
 }
 
 /**

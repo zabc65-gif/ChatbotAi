@@ -250,6 +250,7 @@ if (empty($error) || strpos($error, 'tables') === false) {
                     </div>
                     <div class="chatbot-actions">
                         <a href="?edit=<?= $bot['id'] ?>#form-edit" class="btn btn-secondary btn-sm">Modifier</a>
+                        <a href="chatbot-fields.php?id=<?= $bot['id'] ?>" class="btn btn-info btn-sm" title="Informations métier">📋 Informations</a>
                         <a href="chatbot-knowledge.php?id=<?= $bot['id'] ?>" class="btn btn-knowledge btn-sm" title="Base de connaissances">📚 Apprentissage</a>
                         <form method="POST" style="display: inline;">
                             <input type="hidden" name="action" value="toggle">
@@ -674,6 +675,8 @@ Tu es professionnel, discret et rassurant.</pre>
     .btn-danger:hover { background: #fecaca; }
     .btn-knowledge { background: #dbeafe; color: #1d4ed8; }
     .btn-knowledge:hover { background: #bfdbfe; }
+    .btn-info { background: #d1fae5; color: #047857; }
+    .btn-info:hover { background: #a7f3d0; }
 
     /* Styles pour les exemples */
     .examples-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
