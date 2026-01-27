@@ -11,6 +11,7 @@ $error = '';
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    CSRF::verify();
     try {
         // Hero Section
         $settings->set('hero_title', $_POST['hero_title'] ?? '', 'text', 'landing', 'Titre Hero');
@@ -94,6 +95,7 @@ function getValue($settings, $key, $defaults) {
 <?php endif; ?>
 
 <form method="POST" action="">
+    <?= CSRF::inputField() ?>
     <!-- Hero Section -->
     <div class="card">
         <h2 class="card-title">Section Hero (En-tête)</h2>

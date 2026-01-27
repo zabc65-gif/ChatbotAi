@@ -22,6 +22,7 @@ try {
 
 // Traitement des actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
+    CSRF::verify();
     $action = $_POST['action'] ?? '';
 
     try {
@@ -222,6 +223,7 @@ if (empty($error) || strpos($error, 'tables') === false) {
     <div class="card">
         <h2 class="card-title">Limite d'Utilisation</h2>
         <form method="POST" style="display: flex; gap: 12px; align-items: flex-end;">
+            <?= CSRF::inputField() ?>
             <input type="hidden" name="action" value="update_limit">
             <div class="form-group" style="margin-bottom: 0; flex: 1;">
                 <label class="form-label">Messages max / jour / utilisateur</label>
@@ -267,11 +269,13 @@ if (empty($error) || strpos($error, 'tables') === false) {
                         <a href="chatbot-fields.php?id=<?= $bot['id'] ?>" class="btn btn-info btn-sm" title="Informations métier">📋 Informations</a>
                         <a href="chatbot-knowledge.php?id=<?= $bot['id'] ?>" class="btn btn-knowledge btn-sm" title="Base de connaissances">📚 Apprentissage</a>
                         <form method="POST" style="display: inline;">
+                            <?= CSRF::inputField() ?>
                             <input type="hidden" name="action" value="toggle">
                             <input type="hidden" name="id" value="<?= $bot['id'] ?>">
                             <button type="submit" class="btn btn-secondary btn-sm"><?= $bot['active'] ? 'Désactiver' : 'Activer' ?></button>
                         </form>
                         <form method="POST" style="display: inline;" onsubmit="return confirm('Supprimer ce chatbot ?');">
+                            <?= CSRF::inputField() ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= $bot['id'] ?>">
                             <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
@@ -288,6 +292,7 @@ if (empty($error) || strpos($error, 'tables') === false) {
     <h2 class="card-title"><?= $editBot ? 'Modifier : ' . htmlspecialchars($editBot['name']) : 'Nouveau Chatbot' ?></h2>
 
     <form method="POST">
+        <?= CSRF::inputField() ?>
         <input type="hidden" name="action" value="<?= $editBot ? 'edit' : 'add' ?>">
         <?php if ($editBot): ?>
             <input type="hidden" name="id" value="<?= $editBot['id'] ?>">

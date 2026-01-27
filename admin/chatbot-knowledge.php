@@ -44,6 +44,7 @@ if ($isMainChatbot && empty($error)) {
 
 // Traitement des actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $chatbot && empty($error)) {
+    CSRF::verify();
     $action = $_POST['action'] ?? '';
 
     try {
@@ -304,6 +305,7 @@ if (empty($error) || strpos($error, 'table') === false) {
                         <div class="knowledge-actions">
                             <a href="?id=<?= $currentId ?>&edit=<?= $item['id'] ?>#form-knowledge" class="btn btn-secondary btn-sm">Modifier</a>
                             <form method="POST" style="display: inline;">
+                                <?= CSRF::inputField() ?>
                                 <input type="hidden" name="action" value="toggle">
                                 <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
                                 <button type="submit" class="btn btn-secondary btn-sm">
@@ -311,6 +313,7 @@ if (empty($error) || strpos($error, 'table') === false) {
                                 </button>
                             </form>
                             <form method="POST" style="display: inline;" onsubmit="return confirm('Supprimer cette connaissance ?');">
+                                <?= CSRF::inputField() ?>
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
                                 <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
@@ -327,6 +330,7 @@ if (empty($error) || strpos($error, 'table') === false) {
         <h2 class="card-title"><?= $editItem ? 'Modifier la connaissance' : 'Ajouter une connaissance' ?></h2>
 
         <form method="POST">
+            <?= CSRF::inputField() ?>
             <input type="hidden" name="action" value="<?= $editItem ? 'edit' : 'add' ?>">
             <?php if ($editItem): ?>
                 <input type="hidden" name="item_id" value="<?= $editItem['id'] ?>">

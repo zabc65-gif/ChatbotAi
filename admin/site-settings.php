@@ -11,6 +11,7 @@ $error = '';
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    CSRF::verify();
     try {
         // Informations générales
         $settings->set('site_name', $_POST['site_name'] ?? '', 'string', 'site', 'Nom du site');
@@ -75,6 +76,7 @@ function isChecked($settings, $key, $defaults) {
 <?php endif; ?>
 
 <form method="POST" action="">
+    <?= CSRF::inputField() ?>
     <div class="grid-2">
         <!-- Informations générales -->
         <div class="card">

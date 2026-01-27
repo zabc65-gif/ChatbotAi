@@ -32,6 +32,9 @@ class Auth
             return ['success' => false, 'error' => 'Email ou mot de passe incorrect'];
         }
 
+        // Régénérer l'ID de session pour éviter la fixation de session
+        session_regenerate_id(true);
+
         // Créer la session
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];

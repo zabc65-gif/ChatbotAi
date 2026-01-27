@@ -11,6 +11,7 @@ $error = '';
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    CSRF::verify();
     try {
         $settings->set('chatbot_name', $_POST['chatbot_name'] ?? '', 'string', 'chatbot', 'Nom du chatbot');
         $settings->set('chatbot_welcome_message', $_POST['chatbot_welcome_message'] ?? '', 'text', 'chatbot', 'Message de bienvenue');
@@ -43,6 +44,7 @@ $chatbotSettings = $settings->getGroup('chatbot');
 <?php endif; ?>
 
 <form method="POST" action="">
+    <?= CSRF::inputField() ?>
     <div class="grid-2">
         <!-- Apparence -->
         <div class="card">

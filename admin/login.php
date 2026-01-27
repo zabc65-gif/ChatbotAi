@@ -6,9 +6,17 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../classes/Database.php';
 require_once __DIR__ . '/../classes/Auth.php';
+require_once __DIR__ . '/../classes/RateLimiter.php';
+require_once __DIR__ . '/../classes/CSRF.php';
+
+// Headers de sécurité
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
 
 $db = new Database();
 $auth = new Auth($db);
+$rateLimiter = new RateLimiter($db, 5, 15); // 5 tentatives, blocage 15 min
 
 // Si déjà connecté, rediriger
 if ($auth->isLoggedIn()) {
@@ -17,21 +25,38 @@ if ($auth->isLoggedIn()) {
 }
 
 $error = '';
+$isBlocked = $rateLimiter->isBlocked();
+$remainingAttempts = $rateLimiter->getRemainingAttempts();
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-
-    if (empty($email) || empty($password)) {
-        $error = 'Veuillez remplir tous les champs';
+    // Vérifier le rate limiting
+    if ($isBlocked) {
+        $remainingTime = ceil($rateLimiter->getRemainingLockTime() / 60);
+        $error = "Trop de tentatives. Réessayez dans {$remainingTime} minute(s).";
+    } elseif (!CSRF::validateToken($_POST['csrf_token'] ?? null)) {
+        $error = 'Session expirée. Veuillez rafraîchir la page.';
     } else {
-        $result = $auth->login($email, $password);
-        if ($result['success']) {
-            header('Location: index.php');
-            exit;
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if (empty($email) || empty($password)) {
+            $error = 'Veuillez remplir tous les champs';
         } else {
-            $error = $result['error'];
+            $result = $auth->login($email, $password);
+            if ($result['success']) {
+                $rateLimiter->reset(); // Réinitialiser les tentatives
+                header('Location: index.php');
+                exit;
+            } else {
+                $rateLimiter->recordFailedAttempt();
+                $remainingAttempts = $rateLimiter->getRemainingAttempts();
+                if ($remainingAttempts > 0) {
+                    $error = $result['error'] . " ({$remainingAttempts} tentative(s) restante(s))";
+                } else {
+                    $error = 'Compte temporairement bloqué. Réessayez dans 15 minutes.';
+                }
+            }
         }
     }
 }
@@ -163,6 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" action="">
+            <?= CSRF::inputField() ?>
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required

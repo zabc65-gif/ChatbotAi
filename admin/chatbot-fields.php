@@ -58,6 +58,7 @@ if (empty($error) && !$isMainChatbot) {
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && $chatbot) {
+    CSRF::verify();
     try {
         $pdo = $db->getPdo();
 
@@ -217,6 +218,7 @@ foreach ($fields as $field) {
 </div>
 
 <form method="POST" id="fields-form">
+    <?= CSRF::inputField() ?>
     <?php foreach ($fieldGroups as $groupKey => $groupFields): ?>
         <?php $groupInfo = $groupLabels[$groupKey] ?? ['label' => ucfirst($groupKey), 'icon' => '📁', 'color' => '#64748b']; ?>
 

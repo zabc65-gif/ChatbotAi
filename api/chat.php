@@ -9,9 +9,25 @@
 
 // Headers CORS et JSON
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+
+// CORS sécurisé - Liste des origines autorisées
+$allowedOrigins = [
+    'https://chatbot.myziggi.pro',
+    'http://chatbot.myziggi.pro',
+    'https://www.chatbot.myziggi.pro'
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} elseif (empty($origin)) {
+    // Requêtes same-origin (pas de header Origin)
+    header('Access-Control-Allow-Origin: https://chatbot.myziggi.pro');
+}
+
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');
 
 // Gérer les requêtes OPTIONS (preflight CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
