@@ -39,7 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
                 $redirect = trim($_POST['redirect_message'] ?? '');
                 $quickActions = trim($_POST['quick_actions'] ?? '');
                 $active = isset($_POST['active']) ? 1 : 0;
+                $showOnSite = isset($_POST['show_on_site']) ? 1 : 0;
                 $sortOrder = intval($_POST['sort_order'] ?? 0);
+                $bookingEnabled = isset($_POST['booking_enabled']) ? 1 : 0;
+                $googleCalendarId = trim($_POST['google_calendar_id'] ?? '');
+                $notificationEmail = trim($_POST['notification_email'] ?? '');
 
                 if (empty($slug) || empty($name) || empty($prompt)) {
                     throw new Exception('Le slug, le nom et le prompt système sont obligatoires.');
@@ -50,12 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
                 }
 
                 if ($action === 'edit' && $id) {
-                    $sql = "UPDATE demo_chatbots SET slug=?, name=?, icon=?, color=?, welcome_message=?, system_prompt=?, redirect_message=?, quick_actions=?, active=?, sort_order=? WHERE id=?";
-                    $db->query($sql, [$slug, $name, $icon, $color, $welcome, $prompt, $redirect, $quickActions, $active, $sortOrder, $id]);
+                    $sql = "UPDATE demo_chatbots SET slug=?, name=?, icon=?, color=?, welcome_message=?, system_prompt=?, redirect_message=?, quick_actions=?, active=?, show_on_site=?, sort_order=?, booking_enabled=?, google_calendar_id=?, notification_email=? WHERE id=?";
+                    $db->query($sql, [$slug, $name, $icon, $color, $welcome, $prompt, $redirect, $quickActions, $active, $showOnSite, $sortOrder, $bookingEnabled, $googleCalendarId, $notificationEmail, $id]);
                     $success = "Chatbot \"$name\" mis à jour !";
                 } else {
-                    $sql = "INSERT INTO demo_chatbots (slug, name, icon, color, welcome_message, system_prompt, redirect_message, quick_actions, active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                    $db->query($sql, [$slug, $name, $icon, $color, $welcome, $prompt, $redirect, $quickActions, $active, $sortOrder]);
+                    $sql = "INSERT INTO demo_chatbots (slug, name, icon, color, welcome_message, system_prompt, redirect_message, quick_actions, active, show_on_site, sort_order, booking_enabled, google_calendar_id, notification_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $db->query($sql, [$slug, $name, $icon, $color, $welcome, $prompt, $redirect, $quickActions, $active, $showOnSite, $sortOrder, $bookingEnabled, $googleCalendarId, $notificationEmail]);
                     $success = "Chatbot \"$name\" créé !";
                 }
                 break;
@@ -257,9 +261,14 @@ if (empty($error) || strpos($error, 'tables') === false) {
                             <div class="chatbot-name"><?= htmlspecialchars($bot['name']) ?></div>
                             <code class="chatbot-slug"><?= htmlspecialchars($bot['slug']) ?></code>
                         </div>
-                        <span class="chatbot-status <?= $bot['active'] ? 'active' : '' ?>">
-                            <?= $bot['active'] ? 'Actif' : 'Inactif' ?>
-                        </span>
+                        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+                            <span class="chatbot-status <?= $bot['active'] ? 'active' : '' ?>">
+                                <?= $bot['active'] ? 'Actif' : 'Inactif' ?>
+                            </span>
+                            <?php if (!empty($bot['show_on_site'])): ?>
+                                <span style="font-size: 10px; color: #059669;">👁️ Visible</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="chatbot-preview">
                         <?= htmlspecialchars(mb_substr($bot['welcome_message'] ?: 'Pas de message de bienvenue', 0, 80)) ?>...
@@ -332,15 +341,26 @@ if (empty($error) || strpos($error, 'tables') === false) {
                         <input type="number" name="sort_order" class="form-input" min="0"
                                value="<?= htmlspecialchars($editBot['sort_order'] ?? '0') ?>">
                     </div>
-                    <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px;">
-                            <input type="checkbox" name="active" value="1"
-                                   <?= ($editBot['active'] ?? true) ? 'checked' : '' ?>
-                                   style="width: 18px; height: 18px;">
-                            <span>Actif</span>
-                        </label>
-                    </div>
                 </div>
+
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" name="active" value="1"
+                               <?= ($editBot['active'] ?? true) ? 'checked' : '' ?>
+                               style="width: 18px; height: 18px;">
+                        <span>Actif</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" name="show_on_site" value="1"
+                               <?= ($editBot['show_on_site'] ?? true) ? 'checked' : '' ?>
+                               style="width: 18px; height: 18px;">
+                        <span>Afficher sur le site</span>
+                    </label>
+                </div>
+                <p class="form-hint" style="margin-top: 8px;">
+                    <strong>Actif</strong> = chatbot utilisable |
+                    <strong>Afficher sur le site</strong> = visible sur page d'accueil et démo (max 3 sur l'accueil)
+                </p>
             </div>
 
             <div>
@@ -369,6 +389,41 @@ Comment puis-je vous aider ?") ?></textarea>
                     <p class="form-hint">Boutons affichés en bas du chat. Une question par ligne (3 à 5 suggérées).</p>
                 </div>
             </div>
+        </div>
+
+        <!-- Prise de rendez-vous -->
+        <div style="background: #f0fdf4; padding: 20px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #10b981;">
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #065f46;">Prise de Rendez-vous</h3>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="booking_enabled" value="1"
+                           <?= ($editBot['booking_enabled'] ?? false) ? 'checked' : '' ?>
+                           style="width: 18px; height: 18px;"
+                           onchange="toggleBookingFields(this)">
+                    <span style="font-weight: 500;">Activer la prise de RDV</span>
+                </label>
+            </div>
+            <div id="booking-fields" style="<?= ($editBot['booking_enabled'] ?? false) ? '' : 'display: none;' ?>">
+                <div class="grid-2" style="gap: 16px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Google Calendar ID</label>
+                        <input type="text" name="google_calendar_id" class="form-input"
+                               value="<?= htmlspecialchars($editBot['google_calendar_id'] ?? '') ?>"
+                               placeholder="exemple@group.calendar.google.com">
+                        <p class="form-hint">L'ID du calendrier Google partagé avec le Service Account</p>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Email de notification</label>
+                        <input type="email" name="notification_email" class="form-input"
+                               value="<?= htmlspecialchars($editBot['notification_email'] ?? '') ?>"
+                               placeholder="votre@email.com">
+                        <p class="form-hint">Recevra un email à chaque nouveau RDV</p>
+                    </div>
+                </div>
+            </div>
+            <p class="form-hint" style="margin-top: 12px; color: #047857;">
+                L'IA collectera les informations du visiteur (nom, tel, email, date, heure) et créera automatiquement le RDV dans Google Calendar.
+            </p>
         </div>
 
         <div class="form-group">
@@ -762,6 +817,7 @@ function resetForm() {
     form.querySelector('input[name="color"]').value = '#6366f1';
     form.querySelector('input[name="sort_order"]').value = '0';
     form.querySelector('input[name="active"]').checked = true;
+    form.querySelector('input[name="show_on_site"]').checked = true;
     form.querySelector('textarea[name="welcome_message"]').value = defaultWelcome;
     form.querySelector('textarea[name="redirect_message"]').value = defaultRedirect;
     form.querySelector('textarea[name="quick_actions"]').value = defaultQuickActions;
@@ -772,6 +828,10 @@ function resetForm() {
 
     // Mettre à jour le titre du formulaire
     document.querySelector('#form-edit .card-title').textContent = 'Nouveau Chatbot';
+}
+
+function toggleBookingFields(checkbox) {
+    document.getElementById('booking-fields').style.display = checkbox.checked ? '' : 'none';
 }
 
 function useExample(type) {
