@@ -22,15 +22,23 @@ RewriteRule ^assets/ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
-# Rediriger les URLs sans .php vers le fichier .php (sauf api et assets)
+# Rediriger les URLs sans .php vers le fichier .php (seulement si le .php existe)
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{DOCUMENT_ROOT}/$1.php -f
 RewriteRule ^([^/]+)/?$ $1.php [L,QSA]
 
-# Rediriger les URLs admin sans .php
+# Rediriger les URLs admin sans .php (seulement si le .php existe)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/admin/$1.php -f
 RewriteRule ^admin/([^/]+)/?$ admin/$1.php [L,QSA]
+
+# Rediriger les URLs client sans .php (seulement si le .php existe)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/client/$1.php -f
+RewriteRule ^client/([^/]+)/?$ client/$1.php [L,QSA]
 
 # Redirection 301 des anciennes URLs .php vers les nouvelles (SEO)
 # Exclure l'API de la redirection
@@ -39,11 +47,19 @@ RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s/+([^.]+)\.php(\?[^\s]*)?\s [NC]
 RewriteRule ^ /%1 [R=301,L]
 
 # ================================
+# Pages d'erreur personnalisées
+# ================================
+ErrorDocument 400 /error.php
+ErrorDocument 403 /error.php
+ErrorDocument 404 /error.php
+ErrorDocument 500 /error.php
+ErrorDocument 503 /error.php
+
+# ================================
 
 # Protéger les fichiers sensibles
 <FilesMatch "^(config\.php|install\.sql)$">
-    Order allow,deny
-    Deny from all
+    Require all denied
 </FilesMatch>
 
 # Protéger le dossier classes
@@ -96,11 +112,12 @@ Options -Indexes
 # Charset UTF-8
 AddDefaultCharset UTF-8
 
-# PHP Settings (si allowed)
-<IfModule mod_php.c>
-    php_value upload_max_filesize 10M
-    php_value post_max_size 10M
-    php_value max_execution_time 60
-    php_flag display_errors off
-    php_flag log_errors on
-</IfModule>
+# PHP Settings (désactivé - peut causer erreur 500 sur PHP-FPM)
+# Si nécessaire, configurer via php.ini ou le panneau d'hébergement
+# <IfModule mod_php.c>
+#     php_value upload_max_filesize 10M
+#     php_value post_max_size 10M
+#     php_value max_execution_time 60
+#     php_flag display_errors off
+#     php_flag log_errors on
+# </IfModule>

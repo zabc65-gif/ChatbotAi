@@ -1,3 +1,27 @@
+<?php
+/**
+ * Page d'accueil - ChatBot IA
+ * Charge dynamiquement les chatbots depuis la base de données
+ */
+
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/classes/Database.php';
+
+// Charger les chatbots à afficher sur le site (max 3)
+$homepageChatbots = [];
+try {
+    $db = new Database();
+    $homepageChatbots = $db->fetchAll(
+        "SELECT slug, name, icon, color, welcome_message
+         FROM demo_chatbots
+         WHERE active = 1 AND show_on_site = 1
+         ORDER BY sort_order ASC, id ASC
+         LIMIT 3"
+    );
+} catch (Exception $e) {
+    // Silently fail - use empty array
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -316,6 +340,89 @@
             font-size: 15px;
         }
 
+        /* Booking Features Section */
+        .booking-features {
+            padding: 100px 0;
+            background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+        }
+
+        .booking-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .booking-demo {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        .booking-chat {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .booking-message {
+            margin-bottom: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 85%;
+            font-size: 14px;
+        }
+
+        .booking-message.bot {
+            background: var(--primary);
+            color: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .booking-message.user {
+            background: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .booking-benefits {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .booking-benefit {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .booking-benefit-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--gradient);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .booking-benefit h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .booking-benefit p {
+            color: var(--text-light);
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
         /* Sectors Section */
         .sectors {
             padding: 100px 0;
@@ -338,7 +445,7 @@
         }
 
         .sector-card:hover {
-            border-color: var(--primary);
+            border-color: var(--sector-color, var(--primary));
             transform: translateY(-8px);
         }
 
@@ -351,18 +458,7 @@
             align-items: center;
             justify-content: center;
             font-size: 40px;
-        }
-
-        .sector-card.btp .sector-icon {
-            background: #fef3c7;
-        }
-
-        .sector-card.immo .sector-icon {
-            background: #d1fae5;
-        }
-
-        .sector-card.ecommerce .sector-icon {
-            background: #ede9fe;
+            background: color-mix(in srgb, var(--sector-color, var(--primary)) 15%, white);
         }
 
         .sector-card h3 {
@@ -576,6 +672,14 @@
                 grid-template-columns: 1fr;
             }
 
+            .booking-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .booking-demo {
+                order: 2;
+            }
+
             .footer-content {
                 grid-template-columns: 1fr 1fr;
             }
@@ -607,6 +711,7 @@
             <div class="logo">ChatBot IA</div>
             <ul class="nav-links">
                 <li><a href="#features">Fonctionnalités</a></li>
+                <li><a href="#booking">Rendez-vous</a></li>
                 <li><a href="#sectors">Secteurs</a></li>
                 <li><a href="#pricing">Tarifs</a></li>
                 <li><a href="demo.php">Démo</a></li>
@@ -721,6 +826,50 @@
         </div>
     </section>
 
+    <!-- Booking Features Section -->
+    <section class="booking-features" id="booking">
+        <div class="container">
+            <div class="section-header">
+                <h2>Prise de rendez-vous automatisée</h2>
+                <p>Votre chatbot gère les RDV 24h/24 et synchronise votre agenda en temps réel.</p>
+            </div>
+            <div class="booking-layout">
+                <div class="booking-demo">
+                    <div class="booking-chat">
+                        <div class="booking-message bot">Bonjour ! Je peux vous aider à prendre rendez-vous. Quel service vous intéresse ?</div>
+                        <div class="booking-message user">Je voudrais un devis pour une rénovation</div>
+                        <div class="booking-message bot">Parfait ! Pouvez-vous me donner votre nom et un créneau qui vous arrange ?</div>
+                        <div class="booking-message user">Bruno Martin, mardi 15h si possible</div>
+                        <div class="booking-message bot">C'est noté ! Je confirme votre RDV mardi à 15h. Vous recevrez un email de confirmation.</div>
+                    </div>
+                </div>
+                <div class="booking-benefits">
+                    <div class="booking-benefit">
+                        <div class="booking-benefit-icon">💬</div>
+                        <div>
+                            <h3>Conversation naturelle</h3>
+                            <p>Le chatbot collecte les informations de manière fluide et confirme le récapitulatif avec le visiteur avant validation.</p>
+                        </div>
+                    </div>
+                    <div class="booking-benefit">
+                        <div class="booking-benefit-icon">📅</div>
+                        <div>
+                            <h3>Synchronisation Google Calendar</h3>
+                            <p>Les rendez-vous sont ajoutés instantanément à votre agenda. Plus aucun risque de double-booking.</p>
+                        </div>
+                    </div>
+                    <div class="booking-benefit">
+                        <div class="booking-benefit-icon">✉️</div>
+                        <div>
+                            <h3>Double notification email</h3>
+                            <p>Vous recevez une alerte à chaque nouveau RDV et le visiteur reçoit sa confirmation automatiquement.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Sectors Section -->
     <section class="sectors" id="sectors">
         <div class="container">
@@ -728,26 +877,39 @@
                 <h2>Adapté à votre secteur</h2>
                 <p>Des solutions spécialisées pour répondre aux besoins spécifiques de votre métier.</p>
             </div>
+            <?php if (!empty($homepageChatbots)): ?>
             <div class="sectors-grid">
-                <div class="sector-card btp">
-                    <div class="sector-icon">🏗️</div>
+                <?php foreach ($homepageChatbots as $bot): ?>
+                <div class="sector-card" style="--sector-color: <?= htmlspecialchars($bot['color']) ?>">
+                    <div class="sector-icon" style="background: <?= htmlspecialchars($bot['color']) ?>20;"><?= htmlspecialchars($bot['icon']) ?></div>
+                    <h3><?= htmlspecialchars($bot['name']) ?></h3>
+                    <p><?= htmlspecialchars(mb_substr($bot['welcome_message'] ?? 'Découvrez notre assistant IA spécialisé.', 0, 120)) ?></p>
+                    <a href="demo?sector=<?= htmlspecialchars($bot['slug']) ?>" class="btn btn-primary" style="background: <?= htmlspecialchars($bot['color']) ?>;">Voir la démo</a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+            <div class="sectors-grid">
+                <div class="sector-card">
+                    <div class="sector-icon" style="background: #fef3c7;">🏗️</div>
                     <h3>Bâtiment & Artisans</h3>
                     <p>Qualifiez vos demandes de devis, planifiez les visites techniques et répondez aux questions sur vos services.</p>
-                    <a href="demo.php?sector=btp" class="btn btn-primary">Voir la démo</a>
+                    <a href="demo" class="btn btn-primary">Voir la démo</a>
                 </div>
-                <div class="sector-card immo">
-                    <div class="sector-icon">🏠</div>
+                <div class="sector-card">
+                    <div class="sector-icon" style="background: #d1fae5;">🏠</div>
                     <h3>Agences Immobilières</h3>
                     <p>Accompagnez vos clients dans leur recherche, proposez des biens adaptés et planifiez les visites.</p>
-                    <a href="demo.php?sector=immo" class="btn btn-primary">Voir la démo</a>
+                    <a href="demo" class="btn btn-primary">Voir la démo</a>
                 </div>
-                <div class="sector-card ecommerce">
-                    <div class="sector-icon">🛒</div>
+                <div class="sector-card">
+                    <div class="sector-icon" style="background: #ede9fe;">🛒</div>
                     <h3>E-Commerce</h3>
                     <p>Aidez vos clients à trouver le bon produit, gérez le SAV et boostez vos ventes avec des recommandations.</p>
-                    <a href="demo.php?sector=ecommerce" class="btn btn-primary">Voir la démo</a>
+                    <a href="demo" class="btn btn-primary">Voir la démo</a>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
     </section>
 
@@ -822,6 +984,7 @@
                     <h4>Produit</h4>
                     <ul>
                         <li><a href="#features">Fonctionnalités</a></li>
+                        <li><a href="#booking">Prise de RDV</a></li>
                         <li><a href="#pricing">Tarifs</a></li>
                         <li><a href="demo.php">Démo</a></li>
                     </ul>
@@ -829,9 +992,13 @@
                 <div>
                     <h4>Secteurs</h4>
                     <ul>
-                        <li><a href="demo.php?sector=btp">Bâtiment</a></li>
-                        <li><a href="demo.php?sector=immo">Immobilier</a></li>
-                        <li><a href="demo.php?sector=ecommerce">E-Commerce</a></li>
+                        <?php if (!empty($homepageChatbots)): ?>
+                            <?php foreach ($homepageChatbots as $bot): ?>
+                            <li><a href="demo?sector=<?= htmlspecialchars($bot['slug']) ?>"><?= htmlspecialchars($bot['name']) ?></a></li>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <li><a href="demo">Voir la démo</a></li>
+                        <?php endif; ?>
                     </ul>
                 </div>
                 <div>

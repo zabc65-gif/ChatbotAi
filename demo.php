@@ -11,10 +11,32 @@ require_once __DIR__ . '/classes/Settings.php';
 $db = new Database();
 $settings = new Settings($db);
 
-// Charger les chatbots actifs depuis la BDD
+// Charger les chatbots de démo actifs et visibles depuis la BDD
 $chatbots = $db->fetchAll(
-    "SELECT * FROM demo_chatbots WHERE active = 1 ORDER BY sort_order, id"
+    "SELECT *, 'demo' as source FROM demo_chatbots WHERE active = 1 AND show_on_site = 1 ORDER BY sort_order, id"
 );
+
+// Charger aussi les chatbots clients avec show_on_site = 1
+try {
+    $clientChatbots = $db->fetchAll(
+        "SELECT c.id, c.name as client_name, c.api_key,
+                cb.bot_name as name, cb.icon, cb.primary_color as color,
+                cb.welcome_message, cb.quick_actions, cb.show_on_site,
+                'client' as source
+         FROM clients c
+         JOIN client_chatbots cb ON cb.client_id = c.id
+         WHERE c.active = 1 AND cb.show_on_site = 1
+         ORDER BY c.name"
+    );
+
+    // Ajouter les chatbots clients à la liste avec un slug unique
+    foreach ($clientChatbots as $clientBot) {
+        $clientBot['slug'] = 'client_' . $clientBot['id'];
+        $chatbots[] = $clientBot;
+    }
+} catch (Exception $e) {
+    // La table client_chatbots n'existe peut-être pas encore
+}
 
 // Préparer les données pour JavaScript
 $sectorsJS = [];
@@ -25,15 +47,18 @@ foreach ($chatbots as $bot) {
         $quickActions = array_filter(array_map('trim', explode("\n", $bot['quick_actions'])));
     }
 
-    $sectorsJS[$bot['slug']] = [
+    $slug = $bot['slug'];
+    $sectorsJS[$slug] = [
         'name' => $bot['name'],
-        'icon' => $bot['icon'],
-        'color' => $bot['color'],
-        'welcome' => $bot['welcome_message'],
+        'icon' => $bot['icon'] ?? '💬',
+        'color' => $bot['color'] ?? '#6366f1',
+        'welcome' => $bot['welcome_message'] ?? 'Bonjour ! Comment puis-je vous aider ?',
         'tips' => [
             ['title' => 'Question type', 'text' => '"Comment puis-je vous aider ?"']
         ],
-        'quickActions' => array_values($quickActions)
+        'quickActions' => array_values($quickActions),
+        'source' => $bot['source'] ?? 'demo',
+        'apiKey' => $bot['api_key'] ?? null
     ];
 }
 
@@ -489,6 +514,112 @@ $dailyLimit = (int)($settings->get('demo_daily_limit') ?: 10);
             background: #e2e8f0;
         }
 
+        /* Mobile Menu */
+        .mobile-sector-toggle {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 200;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            align-items: center;
+            gap: 8px;
+        }
+        .mobile-sector-toggle svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        .mobile-sector-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            z-index: 300;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 30px rgba(0,0,0,0.15);
+            max-height: 70vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            visibility: hidden;
+        }
+        .mobile-sector-menu.open {
+            transform: translateY(0);
+            visibility: visible;
+        }
+        .mobile-sector-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            background: white;
+        }
+        .mobile-sector-menu-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .mobile-sector-close {
+            background: #f1f5f9;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mobile-sector-list {
+            padding: 12px;
+        }
+        .mobile-sector-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+        }
+        .mobile-sector-item:hover, .mobile-sector-item.active {
+            background: #f1f5f9;
+        }
+        .mobile-sector-item .sector-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+        }
+        .mobile-sector-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 250;
+        }
+        .mobile-sector-overlay.open {
+            display: block;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .demo-sidebar {
@@ -497,6 +628,10 @@ $dailyLimit = (int)($settings->get('demo_daily_limit') ?: 10);
 
             .demo-chat-area {
                 padding: 16px;
+            }
+
+            .mobile-sector-toggle {
+                display: flex;
             }
         }
     </style>
@@ -512,6 +647,34 @@ $dailyLimit = (int)($settings->get('demo_daily_limit') ?: 10);
             Retour au site
         </a>
     </header>
+
+    <!-- Mobile Sector Menu -->
+    <button class="mobile-sector-toggle" id="mobile-toggle" onclick="toggleMobileSectorMenu()">
+        <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        <span id="current-sector-name">Choisir un secteur</span>
+    </button>
+    <div class="mobile-sector-overlay" id="mobile-overlay" onclick="toggleMobileSectorMenu()"></div>
+    <div class="mobile-sector-menu" id="mobile-menu">
+        <div class="mobile-sector-menu-header">
+            <h3>Choisir un secteur</h3>
+            <button class="mobile-sector-close" onclick="toggleMobileSectorMenu()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+        <div class="mobile-sector-list">
+            <?php foreach ($chatbots as $bot): ?>
+            <button class="mobile-sector-item" data-sector="<?= htmlspecialchars($bot['slug']) ?>" onclick="selectSectorMobile('<?= htmlspecialchars($bot['slug']) ?>')">
+                <div class="sector-icon" style="background: <?= htmlspecialchars($bot['color']) ?>20;"><?= $bot['icon'] ?></div>
+                <div class="sector-info">
+                    <h3 style="font-size: 15px; font-weight: 600; margin: 0;"><?= htmlspecialchars($bot['name']) ?></h3>
+                </div>
+            </button>
+            <?php endforeach; ?>
+            <?php if (empty($chatbots)): ?>
+            <p style="color: var(--text-light); padding: 16px; text-align: center;">Aucun chatbot disponible</p>
+            <?php endif; ?>
+        </div>
+    </div>
 
     <div class="demo-container">
         <!-- Sidebar -->
@@ -916,6 +1079,41 @@ $dailyLimit = (int)($settings->get('demo_daily_limit') ?: 10);
 
             return response.json();
         }
+
+        // Mobile menu functions
+        function toggleMobileSectorMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const overlay = document.getElementById('mobile-overlay');
+            menu.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+
+        function selectSectorMobile(sectorKey) {
+            selectSector(sectorKey);
+            toggleMobileSectorMenu();
+
+            // Mettre à jour le nom affiché sur le bouton
+            if (sectors[sectorKey]) {
+                document.getElementById('current-sector-name').textContent = sectors[sectorKey].name;
+            }
+
+            // Mettre à jour l'état actif dans le menu mobile
+            document.querySelectorAll('.mobile-sector-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.sector === sectorKey);
+            });
+        }
+
+        // Surcharger selectSector pour mettre à jour le bouton mobile aussi
+        const originalSelectSector = selectSector;
+        selectSector = async function(sectorKey) {
+            await originalSelectSector(sectorKey);
+            if (sectors[sectorKey]) {
+                document.getElementById('current-sector-name').textContent = sectors[sectorKey].name;
+                document.querySelectorAll('.mobile-sector-item').forEach(item => {
+                    item.classList.toggle('active', item.dataset.sector === sectorKey);
+                });
+            }
+        };
 
         // Démarrage
         init();

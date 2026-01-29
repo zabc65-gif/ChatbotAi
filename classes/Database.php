@@ -66,6 +66,9 @@ class Database
             return $stmt;
         } catch (PDOException $e) {
             $this->logError('Query error: ' . $e->getMessage() . ' | SQL: ' . $sql);
+            if (defined('DEBUG_MODE') && DEBUG_MODE) {
+                throw new Exception('SQL Error: ' . $e->getMessage() . ' | Query: ' . $sql);
+            }
             throw new Exception('Erreur lors de l\'exécution de la requête');
         }
     }
