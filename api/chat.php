@@ -894,7 +894,8 @@ function handleClientConfig(): void
     // Récupérer les informations du client et de son chatbot
     $client = $db->fetchOne(
         "SELECT c.id, c.name, c.active,
-                ch.bot_name, ch.welcome_message, ch.primary_color, ch.text_color, ch.system_prompt, ch.quick_actions
+                ch.bot_name, ch.welcome_message, ch.primary_color, ch.text_color, ch.system_prompt, ch.quick_actions, ch.show_face, ch.show_hat, ch.face_color, ch.hat_color,
+                ch.booking_enabled, ch.multi_agent_enabled
          FROM clients c
          LEFT JOIN client_chatbots ch ON ch.client_id = c.id
          WHERE c.api_key = ?",
@@ -924,8 +925,37 @@ function handleClientConfig(): void
         'welcome_message' => $client['welcome_message'] ?: 'Bonjour ! Comment puis-je vous aider ?',
         'primary_color' => $client['primary_color'] ?: '#6366f1',
         'text_color' => $client['text_color'] ?: '#1e293b',
-        'quick_actions' => $quickActions
+        'quick_actions' => $quickActions,
+        'show_face' => !empty($client['show_face']),
+        'show_hat' => !empty($client['show_hat']),
+        'face_color' => $client['face_color'] ?: '#6366f1',
+        'hat_color' => $client['hat_color'] ?: '#1e293b',
+        'booking_enabled' => !empty($client['booking_enabled']),
+        'multi_agent_enabled' => !empty($client['multi_agent_enabled'])
     ];
+
+    // Si multi-agent activé, ajouter la config multi-agent
+    if (!empty($client['multi_agent_enabled'])) {
+        $multiAgentConfigFile = __DIR__ . '/../multi-agent/classes/AgentDistributor.php';
+        if (file_exists($multiAgentConfigFile)) {
+            require_once $multiAgentConfigFile;
+            $distributor = new AgentDistributor();
+            $maConfig = $distributor->getClientConfig($client['id']);
+
+            $config['multi_agent'] = [
+                'enabled' => true,
+                'allow_visitor_choice' => !empty($maConfig['allow_visitor_choice']),
+                'show_agent_photos' => !empty($maConfig['show_agent_photos']),
+                'show_agent_bios' => !empty($maConfig['show_agent_bios']),
+                'distribution_mode' => $maConfig['distribution_mode'] ?? 'round_robin'
+            ];
+
+            // Si le choix visiteur est activé, inclure la liste des agents
+            if (!empty($maConfig['allow_visitor_choice'])) {
+                $config['multi_agent']['agents'] = $distributor->getAvailableAgentsForDisplay($client['id']);
+            }
+        }
+    }
 
     echo json_encode(['success' => true, 'config' => $config]);
 }
@@ -1264,7 +1294,7 @@ function processBookingIfDetected(array $response, string $chatbotType, ?string 
         }
     } elseif ($chatbotType === 'client' && $clientId) {
         $botConfig = $settingsDb->fetchOne(
-            "SELECT booking_enabled, google_calendar_id, notification_email, bot_name FROM client_chatbots WHERE client_id = ?",
+            "SELECT booking_enabled, google_calendar_id, notification_email, bot_name, multi_agent_enabled FROM client_chatbots WHERE client_id = ?",
             [$clientId]
         );
         if ($botConfig) {
@@ -1272,6 +1302,44 @@ function processBookingIfDetected(array $response, string $chatbotType, ?string 
             $calendarId = $botConfig['google_calendar_id'];
             $notificationEmail = $botConfig['notification_email'];
             $chatbotName = $botConfig['bot_name'] ?: 'Assistant';
+
+            // === MODE MULTI-AGENT ===
+            if (!empty($botConfig['multi_agent_enabled']) && $bookingEnabled) {
+                // Utiliser le processeur multi-agent
+                $multiAgentFile = __DIR__ . '/../multi-agent/classes/MultiAgentBookingProcessor.php';
+                if (file_exists($multiAgentFile)) {
+                    require_once $multiAgentFile;
+
+                    @file_put_contents($debugLog, "[$ts] MULTI-AGENT MODE ENABLED for client $clientId\n", FILE_APPEND);
+
+                    $multiProcessor = new MultiAgentBookingProcessor();
+                    $preferredAgentId = $bookingData['preferred_agent_id'] ?? null;
+
+                    $multiBookingResult = $multiProcessor->processBookingWithAgent(
+                        $bookingData,
+                        $clientId,
+                        $sessionId,
+                        $preferredAgentId ? (int)$preferredAgentId : null
+                    );
+
+                    @file_put_contents($debugLog, "[$ts] Multi-Agent Result: " . json_encode($multiBookingResult) . "\n", FILE_APPEND);
+
+                    // Ajouter les infos de booking multi-agent à la réponse
+                    $response['booking'] = [
+                        'success' => $multiBookingResult['success'],
+                        'appointment_id' => $multiBookingResult['appointment_id'] ?? null,
+                        'agent' => $multiBookingResult['agent'] ?? null,
+                        'google_event' => $multiBookingResult['google_event_created'] ?? false,
+                        'date' => $multiBookingResult['booking']['date'] ?? $bookingData['date'],
+                        'time' => $multiBookingResult['booking']['time'] ?? $bookingData['time'],
+                        'name' => $bookingData['name'],
+                        'service' => $bookingData['service'] ?? null,
+                        'distribution_method' => $multiBookingResult['distribution_method'] ?? null
+                    ];
+
+                    return $response;
+                }
+            }
         }
     }
 

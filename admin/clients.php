@@ -68,9 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
                 $quickActions = trim($_POST['quick_actions'] ?? '');
                 $allowedDomains = trim($_POST['allowed_domains'] ?? '');
                 $showOnSite = isset($_POST['show_on_site']) ? 1 : 0;
+                $showFace = isset($_POST['show_face']) ? 1 : 0;
+                $showHat = isset($_POST['show_hat']) ? 1 : 0;
+                $faceColor = $_POST['face_color'] ?? '#6366f1';
+                $hatColor = $_POST['hat_color'] ?? '#1e293b';
                 $bookingEnabled = isset($_POST['booking_enabled']) ? 1 : 0;
                 $googleCalendarId = trim($_POST['google_calendar_id'] ?? '');
                 $notificationEmail = trim($_POST['notification_email'] ?? '');
+                $multiAgentEnabled = isset($_POST['multi_agent_enabled']) ? 1 : 0;
 
                 if (empty($name) || empty($email)) {
                     throw new Exception('Le nom et l\'email sont obligatoires.');
@@ -104,9 +109,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
 
                     // Créer le chatbot du client
                     $db->query(
-                        "INSERT INTO client_chatbots (client_id, bot_name, icon, primary_color, welcome_message, system_prompt, redirect_message, quick_actions, allowed_domains, show_on_site, booking_enabled, google_calendar_id, notification_email)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        [$clientId, $chatbotName, $chatbotIcon, $chatbotColor, $welcomeMessage, $systemPrompt, $redirectMessage, $quickActions, $allowedDomains, $showOnSite, $bookingEnabled, $googleCalendarId, $notificationEmail]
+                        "INSERT INTO client_chatbots (client_id, bot_name, icon, primary_color, welcome_message, system_prompt, redirect_message, quick_actions, allowed_domains, show_on_site, show_face, show_hat, face_color, hat_color, booking_enabled, google_calendar_id, notification_email, multi_agent_enabled)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        [$clientId, $chatbotName, $chatbotIcon, $chatbotColor, $welcomeMessage, $systemPrompt, $redirectMessage, $quickActions, $allowedDomains, $showOnSite, $showFace, $showHat, $faceColor, $hatColor, $bookingEnabled, $googleCalendarId, $notificationEmail, $multiAgentEnabled]
                     );
 
                     $success = "Client \"$name\" créé avec succès !";
@@ -132,8 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
 
                     // Mettre à jour le chatbot
                     $db->query(
-                        "UPDATE client_chatbots SET bot_name=?, icon=?, primary_color=?, welcome_message=?, system_prompt=?, redirect_message=?, quick_actions=?, allowed_domains=?, show_on_site=?, booking_enabled=?, google_calendar_id=?, notification_email=? WHERE client_id=?",
-                        [$chatbotName, $chatbotIcon, $chatbotColor, $welcomeMessage, $systemPrompt, $redirectMessage, $quickActions, $allowedDomains, $showOnSite, $bookingEnabled, $googleCalendarId, $notificationEmail, $id]
+                        "UPDATE client_chatbots SET bot_name=?, icon=?, primary_color=?, welcome_message=?, system_prompt=?, redirect_message=?, quick_actions=?, allowed_domains=?, show_on_site=?, show_face=?, show_hat=?, face_color=?, hat_color=?, booking_enabled=?, google_calendar_id=?, notification_email=?, multi_agent_enabled=? WHERE client_id=?",
+                        [$chatbotName, $chatbotIcon, $chatbotColor, $welcomeMessage, $systemPrompt, $redirectMessage, $quickActions, $allowedDomains, $showOnSite, $showFace, $showHat, $faceColor, $hatColor, $bookingEnabled, $googleCalendarId, $notificationEmail, $multiAgentEnabled, $id]
                     );
 
                     $success = "Client \"$name\" mis à jour !";
@@ -175,8 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
 if (isset($_GET['edit']) && empty($error)) {
     $editClient = $db->fetchOne(
         "SELECT c.*, cb.bot_name as chatbot_name, cb.icon as chatbot_icon, cb.primary_color as chatbot_color,
-                cb.welcome_message, cb.system_prompt, cb.redirect_message, cb.quick_actions, cb.allowed_domains, cb.show_on_site,
-                cb.booking_enabled, cb.google_calendar_id, cb.notification_email
+                cb.welcome_message, cb.system_prompt, cb.redirect_message, cb.quick_actions, cb.allowed_domains, cb.show_on_site, cb.show_face, cb.show_hat,
+                cb.face_color, cb.hat_color, cb.booking_enabled, cb.google_calendar_id, cb.notification_email, cb.multi_agent_enabled
          FROM clients c
          LEFT JOIN client_chatbots cb ON cb.client_id = c.id
          WHERE c.id = ?",
@@ -281,6 +286,7 @@ if (empty($error) || strpos($error, 'installé') === false) {
                         <a href="?edit=<?= $client['id'] ?>#form-client" class="btn btn-secondary btn-sm">Modifier</a>
                         <a href="client-chatbot-fields.php?id=<?= $client['id'] ?>" class="btn btn-info btn-sm" title="Informations métier">📋 Infos</a>
                         <a href="client-chatbot-knowledge.php?id=<?= $client['id'] ?>" class="btn btn-knowledge btn-sm" title="Base de connaissances">📚 Apprentissage</a>
+                        <a href="client-agents.php?id=<?= $client['id'] ?>" class="btn btn-agents btn-sm" title="Gestion des agents commerciaux">👥 Agents</a>
                         <button type="button" class="btn btn-primary btn-sm" onclick="showClientConfig(<?= htmlspecialchars(json_encode([
                             'name' => $client['name'],
                             'email' => $client['email'],
@@ -389,11 +395,48 @@ if (empty($error) || strpos($error, 'installé') === false) {
                     <input type="checkbox" name="show_on_site" value="1" <?= ($editClient['show_on_site'] ?? false) ? 'checked' : '' ?> style="width: 18px; height: 18px;">
                     <span>Afficher sur la page démo</span>
                 </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="show_face" value="1" <?= ($editClient['show_face'] ?? false) ? 'checked' : '' ?> style="width: 18px; height: 18px;">
+                    <span>Visage animé</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="show_hat" value="1" <?= ($editClient['show_hat'] ?? false) ? 'checked' : '' ?> style="width: 18px; height: 18px;">
+                    <span>Chapeau</span>
+                </label>
             </div>
             <p class="form-hint" style="margin-top: 8px;">
-                <strong>Actif</strong> = le chatbot fonctionne sur le site du client |
-                <strong>Afficher sur la page démo</strong> = visible sur chatbot.myziggi.pro/demo
+                <strong>Actif</strong> = le chatbot fonctionne |
+                <strong>Démo</strong> = visible sur la page démo |
+                <strong>Visage</strong> = yeux et bouche animés |
+                <strong>Chapeau</strong> = chapeau sur le visage
             </p>
+
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Couleur du visage</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="color" name="face_color"
+                               value="<?= htmlspecialchars($editClient['face_color'] ?? '#6366f1') ?>"
+                               style="width: 50px; height: 36px; border: none; cursor: pointer;">
+                        <input type="text" class="form-input" style="width: 100px; height: 36px;"
+                               value="<?= htmlspecialchars($editClient['face_color'] ?? '#6366f1') ?>"
+                               onchange="this.previousElementSibling.value = this.value"
+                               oninput="this.previousElementSibling.value = this.value">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Couleur du chapeau</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="color" name="hat_color"
+                               value="<?= htmlspecialchars($editClient['hat_color'] ?? '#1e293b') ?>"
+                               style="width: 50px; height: 36px; border: none; cursor: pointer;">
+                        <input type="text" class="form-input" style="width: 100px; height: 36px;"
+                               value="<?= htmlspecialchars($editClient['hat_color'] ?? '#1e293b') ?>"
+                               onchange="this.previousElementSibling.value = this.value"
+                               oninput="this.previousElementSibling.value = this.value">
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Configuration chatbot -->
@@ -482,6 +525,36 @@ Pour toute question hors sujet, tu réponds poliment que tu es spécialisé pour
                                    placeholder="client@email.com">
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Mode Multi-Agent -->
+            <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-top: 16px; border-left: 3px solid #f59e0b;">
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #92400e;">
+                    👥 Mode Multi-Agent
+                    <span style="font-weight: 400; font-size: 12px; color: #b45309;">(Agences, équipes commerciales)</span>
+                </h4>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 12px;">
+                    <input type="checkbox" name="multi_agent_enabled" value="1"
+                           <?= ($editClient['multi_agent_enabled'] ?? false) ? 'checked' : '' ?>
+                           style="width: 18px; height: 18px;"
+                           onchange="document.getElementById('multi-agent-info').style.display = this.checked ? '' : 'none'">
+                    <span style="font-weight: 500;">Activer le mode Multi-Agent</span>
+                </label>
+                <div id="multi-agent-info" style="<?= ($editClient['multi_agent_enabled'] ?? false) ? '' : 'display: none;' ?>">
+                    <p style="font-size: 13px; color: #92400e; margin: 0 0 12px 0;">
+                        Ce mode permet de gérer plusieurs commerciaux/agents, chacun avec son propre agenda Google Calendar.
+                        Les RDV seront automatiquement distribués selon le mode choisi (tour à tour, par disponibilité, par spécialité, ou choix du visiteur).
+                    </p>
+                    <?php if ($editClient): ?>
+                        <a href="client-agents.php?id=<?= $editClient['id'] ?>" class="btn btn-secondary btn-sm" style="background: #fef3c7; color: #92400e; border: 1px solid #f59e0b;">
+                            👥 Gérer les agents de ce client
+                        </a>
+                    <?php else: ?>
+                        <p style="font-size: 12px; color: #b45309; margin: 0;">
+                            <em>Enregistrez le client d'abord, puis vous pourrez ajouter des agents.</em>
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -696,6 +769,8 @@ Pour toute question hors sujet, tu réponds poliment que tu es spécialisé pour
 .btn-info:hover { background: #a7f3d0; }
 .btn-knowledge { background: #dbeafe; color: #1d4ed8; }
 .btn-knowledge:hover { background: #bfdbfe; }
+.btn-agents { background: #fef3c7; color: #92400e; }
+.btn-agents:hover { background: #fde68a; }
 </style>
 
 <script>
