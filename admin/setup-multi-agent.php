@@ -7,17 +7,17 @@
  *
  * Accès : setup-multi-agent.php?key=setup_multiagent_2024
  */
-
 // Vérification de sécurité
-if ($_GET['key'] ?? '' !== 'setup_multiagent_2024') {
+$key = $_GET['key'] ?? $_POST['key'] ?? $_SERVER['HTTP_X_SETUP_KEY'] ?? '';
+if ($key !== 'setup_multiagent_2024') {
     die('Accès refusé. Clé de sécurité incorrecte.');
 }
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../classes/Database.php';
 
-$db = Database::getInstance();
-$pdo = $db->getConnection();
+$db = new Database();
+$pdo = $db->getPdo();
 
 $results = [];
 $errors = [];
