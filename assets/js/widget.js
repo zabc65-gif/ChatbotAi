@@ -14,6 +14,10 @@ class ChatbotWidget {
             placeholder: options.placeholder || 'Écrivez votre message...',
             position: options.position || 'right', // 'right' ou 'left'
             showRemainingMessages: options.showRemainingMessages !== false, // Afficher le compteur
+            showFace: options.showFace !== false, // Afficher le visage animé (true par défaut)
+            showHat: options.showHat !== false, // Afficher le chapeau (true par défaut)
+            faceColor: options.faceColor || '#6366f1', // Couleur du visage animé
+            hatColor: options.hatColor || '#1e293b', // Couleur du chapeau
             ...options
         };
 
@@ -23,6 +27,7 @@ class ChatbotWidget {
         this.remainingMessages = null;
         this.dailyLimit = null;
         this.fingerprint = this.generateFingerprint();
+        this.lastUserMessageEl = null;
 
         this.init();
     }
@@ -53,9 +58,44 @@ class ChatbotWidget {
      * Initialise le widget
      */
     init() {
+        this.injectDynamicStyles();
         this.createWidget();
         this.bindEvents();
         this.initSession();
+    }
+
+    /**
+     * Injecte les styles dynamiques pour les couleurs personnalisées
+     */
+    injectDynamicStyles() {
+        const faceColor = this.options.faceColor;
+        const hatColor = this.options.hatColor;
+
+        const styleId = 'chatbot-dynamic-styles';
+        let styleEl = document.getElementById(styleId);
+
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = styleId;
+            document.head.appendChild(styleEl);
+        }
+
+        styleEl.textContent = `
+            .chatbot-widget .chatbot-avatar {
+                background: ${faceColor} !important;
+            }
+            .chatbot-widget .chatbot-toggle-face {
+                background: ${faceColor} !important;
+            }
+            .chatbot-widget .chatbot-hat,
+            .chatbot-widget .chatbot-hat::before {
+                background: ${hatColor} !important;
+            }
+            .chatbot-widget .toggle-hat,
+            .chatbot-widget .toggle-hat::before {
+                background: ${hatColor} !important;
+            }
+        `;
     }
 
     /**
@@ -73,7 +113,20 @@ class ChatbotWidget {
         this.toggleBtn = document.createElement('button');
         this.toggleBtn.className = 'chatbot-toggle';
         this.toggleBtn.setAttribute('aria-label', 'Ouvrir le chat');
+
+        // Contenu du toggle : visage animé (avec ou sans chapeau) ou juste l'icône SVG
+        const toggleHatHtml = this.options.showHat ? '<div class="toggle-hat"></div>' : '';
+        const toggleFaceHtml = this.options.showFace
+            ? `<div class="chatbot-toggle-face">
+                ${toggleHatHtml}
+                <div class="toggle-eye"></div>
+                <div class="toggle-eye"></div>
+                <div class="toggle-mouth"></div>
+            </div>`
+            : '';
+
         this.toggleBtn.innerHTML = `
+            ${toggleFaceHtml}
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/>
                 <path d="M7 9h10v2H7zm0-3h10v2H7zm0 6h7v2H7z"/>
@@ -83,12 +136,24 @@ class ChatbotWidget {
         // Fenêtre de chat
         this.window = document.createElement('div');
         this.window.className = 'chatbot-window';
+
+        // Contenu de l'avatar : visage animé (avec ou sans chapeau) ou icône SVG
+        const headerHatHtml = this.options.showHat ? '<div class="chatbot-hat"></div>' : '';
+        const headerAvatarContent = this.options.showFace
+            ? `${headerHatHtml}
+               <div class="chatbot-face">
+                   <div class="chatbot-eye"></div>
+                   <div class="chatbot-eye"></div>
+               </div>
+               <div class="chatbot-mouth"></div>`
+            : `<svg viewBox="0 0 24 24" fill="white" width="26" height="26">
+                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+               </svg>`;
+
         this.window.innerHTML = `
             <div class="chatbot-header">
                 <div class="chatbot-avatar">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                    </svg>
+                    ${headerAvatarContent}
                 </div>
                 <div class="chatbot-info">
                     <div class="chatbot-name">${this.escapeHtml(this.options.botName)}</div>
@@ -124,7 +189,12 @@ class ChatbotWidget {
             </div>
         `;
 
+        // Overlay mobile (fond sombre)
+        this.overlay = document.createElement('div');
+        this.overlay.className = 'chatbot-overlay';
+
         // Ajout au DOM
+        this.container.appendChild(this.overlay);
         this.container.appendChild(this.toggleBtn);
         this.container.appendChild(this.window);
         document.body.appendChild(this.container);
@@ -143,6 +213,7 @@ class ChatbotWidget {
         // Toggle ouverture/fermeture
         this.toggleBtn.addEventListener('click', () => this.toggle());
         this.closeBtn.addEventListener('click', () => this.close());
+        this.overlay.addEventListener('click', () => this.close());
 
         // Envoi de message
         this.sendBtn.addEventListener('click', () => this.sendMessage());
@@ -168,8 +239,21 @@ class ChatbotWidget {
     async initSession() {
         // Vérifier si une session existe en localStorage
         const savedSession = localStorage.getItem('chatbot_session');
-        if (savedSession) {
+        const savedDate = localStorage.getItem('chatbot_session_date');
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+        // Si session existante mais jour différent → réinitialiser
+        if (savedSession && savedDate && savedDate !== today) {
+            localStorage.removeItem('chatbot_session');
+            localStorage.removeItem('chatbot_session_date');
+            // Continuer pour créer une nouvelle session
+        } else if (savedSession) {
+            // Même jour (ou pas de date stockée) → réutiliser la session
             this.sessionId = savedSession;
+            // Mettre à jour la date si elle n'existait pas
+            if (!savedDate) {
+                localStorage.setItem('chatbot_session_date', today);
+            }
             await this.loadHistory();
             // Recharger les infos de limite
             await this.refreshLimitInfo();
@@ -185,6 +269,7 @@ class ChatbotWidget {
             if (response.success) {
                 this.sessionId = response.session_id;
                 localStorage.setItem('chatbot_session', this.sessionId);
+                localStorage.setItem('chatbot_session_date', new Date().toISOString().split('T')[0]);
 
                 // Stocker les infos de limite
                 if (response.remaining !== undefined) {
@@ -293,6 +378,7 @@ class ChatbotWidget {
         this.isOpen = true;
         this.window.classList.add('open');
         this.toggleBtn.classList.add('active');
+        this.overlay.classList.add('visible');
         this.input.focus();
     }
 
@@ -303,6 +389,7 @@ class ChatbotWidget {
         this.isOpen = false;
         this.window.classList.remove('open');
         this.toggleBtn.classList.remove('active');
+        this.overlay.classList.remove('visible');
     }
 
     /**
@@ -397,7 +484,17 @@ class ChatbotWidget {
         `;
 
         this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+
+        // Pour les messages utilisateur, on scrolle en bas et on sauvegarde l'élément
+        // Pour les messages bot, on scrolle vers le message utilisateur précédent
+        if (type === 'user') {
+            this.lastUserMessageEl = messageDiv;
+            this.scrollToBottom();
+        } else if (this.lastUserMessageEl) {
+            this.scrollToUserMessage();
+        } else {
+            this.scrollToBottom();
+        }
     }
 
     /**
@@ -406,6 +503,7 @@ class ChatbotWidget {
     showTyping() {
         this.isTyping = true;
         this.sendBtn.disabled = true;
+        this.container.classList.add('typing');
 
         const typingDiv = document.createElement('div');
         typingDiv.className = 'chatbot-typing';
@@ -413,7 +511,8 @@ class ChatbotWidget {
         typingDiv.innerHTML = '<span></span><span></span><span></span>';
 
         this.messagesContainer.appendChild(typingDiv);
-        this.scrollToBottom();
+        // Garder le message utilisateur visible pendant la frappe
+        this.scrollToUserMessage();
     }
 
     /**
@@ -422,6 +521,7 @@ class ChatbotWidget {
     hideTyping() {
         this.isTyping = false;
         this.sendBtn.disabled = false;
+        this.container.classList.remove('typing');
 
         const typingDiv = document.getElementById('chatbot-typing');
         if (typingDiv) {
@@ -437,9 +537,51 @@ class ChatbotWidget {
     }
 
     /**
+     * Scroll pour montrer le message utilisateur en haut de la vue
+     */
+    scrollToUserMessage() {
+        if (this.lastUserMessageEl) {
+            this.lastUserMessageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            this.scrollToBottom();
+        }
+    }
+
+    /**
      * Formate le message (markdown basique)
      */
     formatMessage(content) {
+        // Traiter les demandes de rendez-vous [BOOKING_REQUEST]...[/BOOKING_REQUEST]
+        const bookingMatch = content.match(/\[BOOKING_REQUEST\]([\s\S]*?)\[\/BOOKING_REQUEST\]/);
+        if (bookingMatch) {
+            try {
+                const booking = JSON.parse(bookingMatch[1]);
+                const bookingHtml = `
+                    <div class="chatbot-booking-card">
+                        <div class="chatbot-booking-header">📅 Rendez-vous confirmé</div>
+                        <div class="chatbot-booking-details">
+                            <div><strong>Nom :</strong> ${this.escapeHtml(booking.name || '')}</div>
+                            <div><strong>Date :</strong> ${this.escapeHtml(booking.date || '')} à ${this.escapeHtml(booking.time || '')}</div>
+                            ${booking.service ? `<div><strong>Service :</strong> ${this.escapeHtml(booking.service)}</div>` : ''}
+                            ${booking.email ? `<div><strong>Email :</strong> ${this.escapeHtml(booking.email)}</div>` : ''}
+                            ${booking.phone ? `<div><strong>Tél :</strong> ${this.escapeHtml(booking.phone)}</div>` : ''}
+                        </div>
+                        <div class="chatbot-booking-footer">Vous recevrez une confirmation par email.</div>
+                    </div>
+                `;
+                // Remplacer le bloc technique par la carte formatée
+                content = content.replace(/\[BOOKING_REQUEST\][\s\S]*?\[\/BOOKING_REQUEST\]/, '');
+                // Traiter le reste du message normalement
+                let formatted = this.escapeHtml(content.trim());
+                formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                formatted = formatted.replace(/\n/g, '<br>');
+                return (formatted ? formatted + '<br><br>' : '') + bookingHtml;
+            } catch (e) {
+                // Si erreur de parsing, continuer normalement
+            }
+        }
+
         // Échapper le HTML d'abord
         let formatted = this.escapeHtml(content);
 
@@ -491,6 +633,7 @@ class ChatbotWidget {
         }
 
         localStorage.removeItem('chatbot_session');
+        localStorage.removeItem('chatbot_session_date');
         this.sessionId = null;
         this.messagesContainer.innerHTML = '';
 

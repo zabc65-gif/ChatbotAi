@@ -79,6 +79,7 @@
     let selectedAgentId = null;
     let isMultiAgent = false;
     let allowVisitorChoice = false;
+    let lastUserMessageEl = null;
 
     // Générer un fingerprint pour identifier l'utilisateur
     function generateFingerprint() {
@@ -230,7 +231,7 @@
     // Ajouter un message à l'interface
     function addMessage(content, sender, animate = true, isError = false) {
         const messagesContainer = document.getElementById('chatbot-messages');
-        if (!messagesContainer) return;
+        if (!messagesContainer) return null;
 
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chatbot-message chatbot-message-' + sender;
@@ -243,7 +244,20 @@
 
         messageDiv.appendChild(bubble);
         messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Pour les messages utilisateur, on scrolle en bas
+        // Pour les messages bot, on scrolle vers le message utilisateur précédent
+        if (sender === 'user') {
+            lastUserMessageEl = messageDiv;
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        } else if (lastUserMessageEl) {
+            // Scroll pour montrer le message utilisateur en haut de la vue
+            lastUserMessageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        return messageDiv;
     }
 
     // Formater le message (markdown basique)
@@ -272,7 +286,12 @@
         indicator.className = 'chatbot-message chatbot-message-bot';
         indicator.innerHTML = '<div class="chatbot-bubble chatbot-typing-bubble"><span></span><span></span><span></span></div>';
         messagesContainer.appendChild(indicator);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Garder le message utilisateur visible pendant la frappe
+        if (lastUserMessageEl) {
+            lastUserMessageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
     }
 
     // Masquer l'indicateur de frappe
@@ -304,7 +323,12 @@
             '</div>';
 
         messagesContainer.appendChild(card);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Garder le message utilisateur visible
+        if (lastUserMessageEl) {
+            lastUserMessageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
     }
 
     // Mettre à jour l'input

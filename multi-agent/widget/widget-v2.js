@@ -33,7 +33,8 @@
         config: { ...DEFAULT_CONFIG },
         messages: [],
         selectedAgent: null,
-        agents: []
+        agents: [],
+        lastUserMessageEl: null
     };
 
     /**
@@ -183,8 +184,18 @@
      */
     function addMessage(role, content) {
         state.messages.push({ role, content, timestamp: new Date() });
-        renderMessage(role, content);
-        scrollToBottom();
+        const messageEl = renderMessage(role, content);
+
+        // Pour les messages utilisateur, on scrolle en bas
+        // Pour les messages bot, on scrolle vers le message utilisateur précédent
+        if (role === 'user') {
+            state.lastUserMessageEl = messageEl;
+            scrollToBottom();
+        } else if (state.lastUserMessageEl) {
+            scrollToUserMessage();
+        } else {
+            scrollToBottom();
+        }
     }
 
     /**
@@ -192,7 +203,7 @@
      */
     function renderMessage(role, content) {
         const messagesContainer = document.getElementById('chatbot-v2-messages');
-        if (!messagesContainer) return;
+        if (!messagesContainer) return null;
 
         const messageEl = document.createElement('div');
         messageEl.className = `chatbot-v2-message chatbot-v2-message-${role}`;
@@ -207,6 +218,7 @@
         `;
 
         messagesContainer.appendChild(messageEl);
+        return messageEl;
     }
 
     /**
@@ -391,6 +403,17 @@
         const messagesContainer = document.getElementById('chatbot-v2-messages');
         if (messagesContainer) {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    /**
+     * Scroll pour montrer le message utilisateur en haut
+     */
+    function scrollToUserMessage() {
+        if (state.lastUserMessageEl) {
+            state.lastUserMessageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            scrollToBottom();
         }
     }
 
