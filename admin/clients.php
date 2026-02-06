@@ -284,6 +284,7 @@ if (empty($error) || strpos($error, 'installé') === false) {
 
                     <div class="client-actions">
                         <a href="?edit=<?= $client['id'] ?>#form-client" class="btn btn-secondary btn-sm">Modifier</a>
+                        <a href="client-stats.php?id=<?= $client['id'] ?>" class="btn btn-stats btn-sm" title="Statistiques détaillées">📊 Stats</a>
                         <a href="client-chatbot-fields.php?id=<?= $client['id'] ?>" class="btn btn-info btn-sm" title="Informations métier">📋 Infos</a>
                         <a href="client-chatbot-knowledge.php?id=<?= $client['id'] ?>" class="btn btn-knowledge btn-sm" title="Base de connaissances">📚 Apprentissage</a>
                         <a href="client-agents.php?id=<?= $client['id'] ?>" class="btn btn-agents btn-sm" title="Gestion des agents commerciaux">👥 Agents</a>
@@ -771,6 +772,8 @@ Pour toute question hors sujet, tu réponds poliment que tu es spécialisé pour
 .btn-knowledge:hover { background: #bfdbfe; }
 .btn-agents { background: #fef3c7; color: #92400e; }
 .btn-agents:hover { background: #fde68a; }
+.btn-stats { background: #f3e8ff; color: #7c3aed; }
+.btn-stats:hover { background: #e9d5ff; }
 </style>
 
 <script>
