@@ -134,6 +134,16 @@
         const savedSession = localStorage.getItem('chatbot_client_session_' + apiKey);
         if (!savedSession) return false;
 
+        // Si la session date d'un jour précédent → réinitialiser
+        const savedDate = localStorage.getItem('chatbot_client_session_date_' + apiKey);
+        const today = new Date().toISOString().split('T')[0];
+
+        if (savedDate && savedDate !== today) {
+            localStorage.removeItem('chatbot_client_session_' + apiKey);
+            localStorage.removeItem('chatbot_client_session_date_' + apiKey);
+            return false;
+        }
+
         sessionId = savedSession;
 
         try {
@@ -215,6 +225,7 @@
                 if (data.session_id && data.session_id !== sessionId) {
                     sessionId = data.session_id;
                     localStorage.setItem('chatbot_client_session_' + apiKey, sessionId);
+                    localStorage.setItem('chatbot_client_session_date_' + apiKey, new Date().toISOString().split('T')[0]);
                 }
             } else {
                 addMessage(data.error || 'Une erreur est survenue.', 'bot', false, true);
@@ -796,18 +807,30 @@
             }
             #chatbot-quick-actions {
                 display: flex !important;
-                flex-wrap: nowrap !important;
+                flex-wrap: wrap !important;
                 gap: 8px !important;
                 padding: 10px 16px !important;
                 background: #f8fafc !important;
                 border-top: 1px solid #e2e8f0 !important;
-                overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-                scrollbar-width: none !important;
-                -ms-overflow-style: none !important;
+                max-height: 120px !important;
+                overflow-y: auto !important;
             }
-            #chatbot-quick-actions::-webkit-scrollbar {
-                display: none !important;
+            @media (max-width: 480px) {
+                #chatbot-quick-actions {
+                    flex-wrap: nowrap !important;
+                    overflow-x: auto !important;
+                    overflow-y: hidden !important;
+                    max-height: none !important;
+                    -webkit-overflow-scrolling: touch !important;
+                    scrollbar-width: none !important;
+                    -ms-overflow-style: none !important;
+                }
+                #chatbot-quick-actions::-webkit-scrollbar {
+                    display: none !important;
+                }
+                .chatbot-quick-action {
+                    flex-shrink: 0 !important;
+                }
             }
             .chatbot-quick-action {
                 padding: 6px 12px !important;
@@ -817,7 +840,6 @@
                 font-size: 12px !important;
                 color: ${textColor} !important;
                 white-space: nowrap !important;
-                flex-shrink: 0 !important;
                 cursor: pointer !important;
                 transition: all 0.2s !important;
                 line-height: 1.4 !important;
@@ -1490,6 +1512,7 @@
         // Si pas d'historique, préparer une nouvelle session
         if (!historyLoaded) {
             localStorage.setItem('chatbot_client_session_' + apiKey, sessionId);
+            localStorage.setItem('chatbot_client_session_date_' + apiKey, new Date().toISOString().split('T')[0]);
         }
     }
 
